@@ -1,0 +1,17 @@
+
+
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
+\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+%uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
+
+%Shape: Ellipse [id:dp793898385547354] 
+\draw  [color={rgb, 255:red, 53; green, 53; blue, 53 }  ,draw opacity=1 ][fill={rgb, 255:red, 51; green, 51; blue, 51 }  ,fill opacity=0.13 ][line width=1.5]  (162.69,87.08) .. controls (189.13,86.98) and (210.7,122.62) .. (210.87,166.68) .. controls (211.04,210.74) and (189.74,246.54) .. (163.31,246.64) .. controls (136.87,246.74) and (115.3,211.1) .. (115.13,167.04) .. controls (114.96,122.98) and (136.26,87.18) .. (162.69,87.08) -- cycle ;
+%Shape: Frame [id:dp42095343921267503] 
+\draw  [draw opacity=0][fill={rgb, 255:red, 255; green, 255; blue, 255 }  ,fill opacity=1 ] (30.5,38.36) -- (295.5,38.36) -- (295.5,295.36) -- (30.5,295.36) -- cycle(256.95,76.91) -- (69.05,76.91) -- (69.05,256.81) -- (256.95,256.81) -- cycle ;
+%Shape: Rectangle [id:dp7799324317935195] 
+\draw   (69.05,76.91) -- (256.95,76.91) -- (256.95,256.81) -- (69.05,256.81) -- cycle ;
+
+
+
+\end{tikzpicture}

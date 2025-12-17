@@ -1,0 +1,21 @@
+
+
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
+\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+%uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
+
+%Shape: Ellipse [id:dp793898385547354] 
+\draw  [color={rgb, 255:red, 54; green, 54; blue, 54 }  ,draw opacity=0.58 ][fill={rgb, 255:red, 51; green, 51; blue, 51 }  ,fill opacity=0.13 ][line width=1.5]  (46,211.49) .. controls (46,187.67) and (77.9,168.36) .. (117.25,168.36) .. controls (156.6,168.36) and (188.5,187.67) .. (188.5,211.49) .. controls (188.5,235.3) and (156.6,254.61) .. (117.25,254.61) .. controls (77.9,254.61) and (46,235.3) .. (46,211.49) -- cycle ;
+%Shape: Frame [id:dp42095343921267503] 
+\draw  [draw opacity=0][fill={rgb, 255:red, 255; green, 255; blue, 255 }  ,fill opacity=1 ] (30.5,38.36) -- (295.5,38.36) -- (295.5,295.36) -- (30.5,295.36) -- cycle(256.95,76.91) -- (69.05,76.91) -- (69.05,256.81) -- (256.95,256.81) -- cycle ;
+%Shape: Rectangle [id:dp7799324317935195] 
+\draw   (69.05,76.91) -- (256.95,76.91) -- (256.95,256.81) -- (69.05,256.81) -- cycle ;
+
+%Shape: Ellipse [id:dp4295427508712464] 
+\draw  [color={rgb, 255:red, 25; green, 25; blue, 25 }  ,draw opacity=0.58 ][fill={rgb, 255:red, 19; green, 19; blue, 19 }  ,fill opacity=0.13 ][line width=1.5]  (207.99,86.8) .. controls (222.34,86.8) and (233.97,106.02) .. (233.97,129.72) .. controls (233.97,153.42) and (222.34,172.63) .. (207.99,172.63) .. controls (193.65,172.63) and (182.02,153.42) .. (182.02,129.72) .. controls (182.02,106.02) and (193.65,86.8) .. (207.99,86.8) -- cycle ;
+
+
+
+
+\end{tikzpicture}

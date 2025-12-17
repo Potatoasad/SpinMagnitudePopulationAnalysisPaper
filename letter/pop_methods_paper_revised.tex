@@ -1,0 +1,1396 @@
+\documentclass[twocolumn,usenames,dvipsnames,linenumbers]{aastex631}
+
+%\documentclass[12pt,tightenlines,showpacs,preprintnumbers,amsmath,amssymb,superscriptaddress,nofootinbib,longbibliography]{revtex4-2}
+
+%\documentclass[aps,prd,twocolumn,amsmath,showpacs,amssymb,superscriptaddress,nofootinbib]{revtex4-1}
+
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{amssymb,amsmath}
+\usepackage{bbm}
+\usepackage{mathrsfs} %For scri
+\usepackage{latexsym}
+\usepackage{mathtools} %For \coloneqq
+\usepackage{color}
+\usepackage{comment}
+\usepackage[normalem]{ulem} 
+%\usepackage[percent]{overpic}
+\usepackage{dcolumn}
+%\usepackage{doi}
+\usepackage{hyperref}
+\usepackage[nolist,nohyperlinks]{acronym}
+%\usepackage{algorithm} 
+%\usepackage{algorithmicx} 
+%\usepackage{algpseudocode} 
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{booktabs}
+%\usepackage[ruled,lined]{algorithm2e}
+%\usepackage[colorlinks=true,citecolor=blue,urlcolor=blue]{hyperref}
+%\usepackage{nohyperref}
+%\usepackage[usenames,dvipsnames]{xcolor}
+%\def\mole{\scalerel*{\includegraphics{mole.png}}{b}}
+
+\allowdisplaybreaks
+
+
+\graphicspath{{./figures}}
+
+\newcommand{\Caltech}{\affiliation{Theoretical Astrophysics 350-17,
+    California Institute of Technology, Pasadena, CA 91125}}
+\newcommand{\CITA}{\affiliation{Canadian Institute for Theoretical Astrophysics, 60 St. George Street, Toronto, ON, M5S 3H8 Canada}}
+%\newcommand{\Austin}{\affiliation{Theory Group, Department of Physics, University of Texas at Austin, Austin, TX 78712, USA}}
+\newcommand{\Austin}{\affiliation{Weinberg Institute, University of Texas at Austin, Austin, TX 78712, USA}}
+\newcommand{\CCA}{\affiliation{Center for Computational Astrophysics, Flatiron Institute, NY}}
+
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\bLambda}{\boldsymbol{\Lambda}}
+\newcommand{\ba}{{\bf a}}
+\newcommand{\bb}{{\bf b}}
+\newcommand{\bZ}{{\bf Z}}
+\newcommand{\bTheta}{\boldsymbol{\Theta}}
+
+\newcommand{\R}[1]{\textcolor{red}{#1}}
+\newcommand{\aaron}[1]{\textcolor{RoyalPurple}{#1}}
+\newcommand{\asad}[1]{\textcolor{olive}{AH: #1}}
+\newcommand{\del}[1]{\textcolor{red}{\sout{#1}}}
+
+\newcommand{\grad}{\nabla}
+\newcommand{\one}[1]{\mathds{1}\left[#1\right]}
+\newcommand{\zik}{\langle z_{ik}\rangle }
+%\setlength{\abovecaptionskip}{-2pt}
+%\setlength{\belowcaptionskip}{-2pt}
+
+\begin{document}
+	
+	
+\begin{acronym}
+	\acro{GW}{gravitational wave}
+	\acro{GR}{general relativity}
+	\acro{CBC}{compact binary coalescence}
+	\acro{BH}{black hole}
+	\acro{BBH}{binary black hole}
+	\acro{LVK}{LIGO-Virgo-KAGRA}
+	\acro{PE}{parameter estimation}
+	\acro{FAR}{false-alarm rate}
+	\acro{GWOSC}{the Gravitational Wave Open Science Center}
+	\acro{SSB}{solar system barycenter}
+	\acro{SPA}{stationary phase approximation}
+	\acro{PN}{post-Newtonian}
+	\acro{BNS}{binary neutron star}
+	\acro{IMR}{inspiral-merger-ringdown}
+	\acro{NSF}{National Science Foundation}
+	\acro{GMM}{Gaussian mixture model}
+	\acro{MCMC}{Markov chain Monte Carlo}
+	\acro{BIC}{Bayesian information criterion}
+	\acro{BF}{Bayes factor}
+	\acro{SDDR}{Savage Dickey density ratio}
+	\acro{TGMM}{truncated Gaussian mixture model}
+	\acro{PPD}{posterior predictive distribution}
+	\acro{HPDI}{highest posterior density interval}
+	\acro{AGN}{active galactic nucleus}
+	\acro{KDE}{kernel density estimate}
+\end{acronym}
+
+%\title{Spin population analysis}
+\title{Reconstructing the Edges: Testing for compact population features at the edges of parameter space}
+
+\author{Asad Hussain}
+\Austin
+\author{Max Isi}
+\CCA
+\author{Aaron Zimmerman}
+\Austin
+%\CITA
+%\Caltech
+\date{\today}
+
+\begin{abstract}
+Often we are interested in testing certain hypotheses about populations of objects in the universe, where we find that the event-level parameters are theoretically bound to be within a range. A common example is dimensionless black hole (BH) spin, which ranges between 0 and 1 (BHs with a larger spin simply cannot exist). In these situations we may may want to test whether there is a significant sub-population entirely within the parameter’s edge value (e.g. a population of BHs with very close to zero spin, or a beyond-GR parameter being exactly 0). Current methods that employ Monte Carlo or KDE techniques to evaluate population models may find a biased result when testing for such hypotheses due to a lack of posterior samples near the edge or the natural boundary bias of the KDE. We introduce a new framework using Truncated Gaussian Mixture models to reduce the bias near the edge and show how one can accurately test such hypotheses. In addition, we show the specifics of the application in the context of gravitational wave data analysis.
+\end{abstract}
+
+\section{Introduction}
+ Inferring the population properties of a class of astrophysical objects from multiple individual measurements usually takes the form of a hierarchical bayesian analysis. In a standard hierarchical analysis we usually simultaneously infer the parameters of individual events and the parameters of the proposed population in one inference procedure. In all but the simplest cases, this can be computationally prohibitive, because of the excessive dimensionality of the problem. As a result, the analysis is often broken down into two steps. 
+
+First, individual objects are observed and their data $d$ is recorded. Using a model for the data generating process, we can infer a posterior distribution over the individual parameters of the object $\theta$ given the detected data $d$, written as $p(\theta | d)$. Samples from these posterior distributions are reported and used for all further analyses.
+
+Next, these posteriors are then pooled together as part of a seperate analysis to infer the population properties of these objects. One posits a model for the population generating process as a class of distributions over $\theta$, parameterized by $\Lambda$ as $p(\theta | \Lambda)$. This, along with a method to organize our selection biases provides us with the ingredients needed to perform such an analysis. 
+
+As part of a population analysis it is often the case that we need to use these samples to estimate integrals of the form
+
+\begin{equation}
+	\label{generic-integral}
+	I(\Lambda) = \int p(\theta | \Lambda) \frac{p(\theta)}{w(\theta)} d^n\theta\, .
+\end{equation} 
+
+We focus on the situation when computing $p(\theta)$ is computationally prohibitive, and so one cannot simply query for $I(\Lambda)$ as part of a sampling algorithm. As a solution, one often infers $p(\theta)$ in an offline step and aquires \textit{samples} from $p(\theta)$ with some weights $w(\theta)$. 
+
+Performing a population analysis free of systematic biases necessitates that we can give good estimates for integrals of the form \eqref{generic-integral} using samples.  We would like the estimates to be \textbf{unbiased} and \textbf{precise} (low variance) for all the different shapes of the population model we would like to probe. Of course, there is a tradeoff, and for narrow population features, we would like to be able to trade some bias for a decrease in variance to be able to probe such features. 
+
+In particular, we focus on the situation when we would want to probe a (sub-)population feature that is \textit{compact} and near the \textit{boundary} of a parameter. Examples of such would be wanting to know if there is a subpopulation of BBHs with nearly vanishing spin $\chi \approx 0$ ($\chi \in [0,1]$) or a subpopulation of exoplanets with nearly circular orbits, i.e $\epsilon \approx 0$ ($\epsilon \in [0,1]$).
+
+It is known that the standard monte-carlo estimate of the integral can have very large variance with \textit{compact} population features. Many other techniques that exist to solve the problem of compact features unfortunately introduce an inherent bias when the compact feature approaches the boundary. 
+
+In this paper we propose a new method to calculate integrals such as \eqref{generic-integral} which is sufficiently unbiased and precise - especially in the regime where the population feature is \textit{both compact and near the boundary}. This method makes the assumption that the proposed population model can be factorized into mixture of truncated gaussians in this bounded parameter (a very generic \& flexible model), and any general population model in the rest. This assumption only ever applies to the bounded parameter of interest, and we can resort to the standard monte-carlo estimate in other parameters.
+
+The main idea of the method is to utilize an algorithm (introduced by \cite{Lee2012}) to fit weighted samples to a mixture of \textbf{truncated} multivariate gaussians, aslo called Truncated Gaussian Mixture Models (TGMMs)- which handle edge features very accurately. 
+
+\begin{equation}
+	\frac{p(\theta)}{w(\theta)} \approx \sum_k w_k \phi_{[a,b]}(\theta | \mu_k \Sigma_k)\, .
+\end{equation}
+
+Subsequently the integral \eqref{generic-integral} can be broken into pieces which can be computed analytically in the sector of the bounded variable of interest.
+
+We will introduce this technique in Section I, where as an example, we will consider the evaluation of the integral for a 1-dimensional population model.
+%Our example will only have models which are truncated gaussians (or mixtures thereof) - a restriction which we will remove in Section II with hybrid models. 
+For this example, we will examine two very common ways of calculating the integral \eqref{generic-integral}: Monte Carlo Estimates and Kernel Density Estimates and show the regimes where they fail at the boundary. We will then introduce our solution using Truncated Gaussian Mixture models and show their bias and variance properties for this problem. 
+
+In Section II we will formalize the method, and explain the different ingredients needed to make it work. Namely, a way to fit a mixture of truncated multivariate gaussians to a set of weighted samples, and a way to compute the integral of a product of two truncated normal distributions. We will then show how well it can recover injected models in different regimes for a more complicated population model.
+
+In Section III we will introduce the more general hybrid models, which work in the general case when we have a factorizable population model which cannot always be written as sum of truncated normal distributions.
+
+In Section IV we will discuss the fitting of Truncated Gaussian Mixtures, the algorithm used to perform the fit (based on \cite{Lee2012}) and a few additional advancements made to make the fitting perform better. 
+
+In Section V we discuss some numerical considerations when computing the integral of a product of two truncated normal distributions, and some tricks needed to compute these in a numerically stable way. For an end user that simply wants to perform a population analysis, these are already implemented in the \texttt{gravpop} package, and an understanding of these is not strictly necessary.
+
+
+
+\begin{comment}
+For sectors of the parameter space where we want to probe narrow features, we allow the population model to be truncated gaussians (or mixtures thereof). One can sidestep the  Monte Carlo estimate of the integral in that dimension and compute the integrals directly by fitting a truncated gaussian mixture model to the posterior beforehand. By introducing numerically stable and fast algorithms for computing the integral of a product of two truncated gaussians, we can analytically compute the integral in the bounded sector, and resort to monte carlo estimates in the rest. This can avoid the near infinite variance of the monte-carlo estimate for very narrow population features, and biased edge-reconstructions of standard KDE methods.
+
+More precisely, let $\theta = \{\theta_b, \theta'\}$ where $\theta_b$ is the bounded parameter of interest, and the $\theta'$ are the rest. We fit a truncated gaussian mixture model to the weighted posterior samples and get a fit to $p(\theta)/w(\theta)$ that is unbiased at the boundary.
+
+\begin{equation}
+	 \frac{p(\theta)}{w(\theta)}  \approx \sum_k w_k \phi_{[a,b]}(\theta_b | \mu_k, \Sigma_k ) \phi_{[a,b]}(\theta' |  \mu'_k, \Sigma'_k )
+\end{equation}
+
+If the model also factorizes into models in $\theta_b$ and $\theta'$ like
+
+\begin{equation}
+	p(\theta | \Lambda) = \sum_j \eta_j \phi_{[a, b]}(\theta_b | \mu^j_b, \Sigma^j_b) p(\theta' | {\Lambda'}^{j})  
+\end{equation}
+
+We can compute \eqref{generic-integral} using 
+
+\subsection{Contrast with existing methods}
+
+Current methodology often employs the monte-carlo estimate
+
+\begin{equation}
+	\hat{I}_{N}(\Lambda) = \frac{1}{N} \sum_i^N  \frac{p(\theta_i | \Lambda)}{w(\theta_i)}\,.
+\end{equation}
+
+This estimate is unbiased in the sense that $\mathbb{E}[\hat{I}_{N}(\Lambda)] = I(\Lambda)$, but the variance of the estimate starts to become very large for thin population features, i.e. when $p(\theta | \Lambda)$ becomes more compact for some values of $\Lambda$. The variance of this estimate in such a context has been extensively studied in the study of gravitational wave population analysis (\cite{Talbot2023} \asad{ add citations}).
+
+Generically the way to approach the above problem in the literature has been to be able to use density estimation techniques of $p(\theta)$ (e.g KDEs, GMMs, Normalizing Flows etc.) from its samples and come up with ways that they can be (semi-)analytically integrated with a more restricted population model.
+
+One of the solutions to the above is to use Kernel Density Estimates of $p(\theta)$ using some kernel $K$, giving us the estimate:
+
+\begin{equation}
+	\hat{p}(\theta) = \frac{1}{N}\sum_{i=1}^N K(\theta  | \theta_i h)
+\end{equation} 
+
+for some bandwidth $h$ which can be computed for that kernel. This estimate takes the form
+
+\begin{equation}
+\label{KDE-integral}
+\begin{split}
+	\hat{I}^{({\tiny KDE})}_{N}(\Lambda) &= \frac{1}{N} \sum_i^N  \frac{1}{w(\theta_i)} \int p(\theta| \Lambda)  K(\theta  | \theta_i h) d\theta \\
+  &= \frac{1}{N} \sum_i^N  \frac{1}{w(\theta_i)} F(\Lambda, \theta_i, h)
+\end{split}
+\end{equation}
+
+Note that, as with our method, the ability to compute the individual integrals in the sum of \eqref{KDE-integral}, depends on being able to perform the integral analytically in the sector of interest, which puts constraints on the form of the population model. These techniques generally have two requirements: 1) The integral of the population model with the kernel must be analytically tractable \& fast to compute and 2) The density estimate must not be a biased estimate in the regime of interest. i.e. $\mathbb{E}(\hat{I}^{({\tiny KDE})}_{N}(\Lambda)) = I(\Lambda)$
+
+In most literature
+
+
+
+
+
+A common solution is to use some method to represent $p(\theta)$ from the $N$ samples that is ammenable to an analytic estimate of $I(\Lambda)$.
+
+\end{comment}
+
+
+ \begin{comment}
+
+\textit{{\bf The key idea of the method is the following:} For sectors of the parameter space where the population models are truncated gaussians (or mixtures thereof), one can sidestep the  Monte Carlo estimate of the integral and compute the integrals directly by fitting a truncated gaussian mixture model to the posterior beforehand. This can avoid the near infinite variance of the estimate for very narrow population features, and biased edge-reconstructions of standard KDE methods. In sectors where the population model is not a mixture of truncated gaussians, we can use a hybrid scheme to revert to monte-carlo estimates in such model sectors - allowing us to utilize the advantages of both methods.}
+
+
+\section{Problem Setup}
+
+%• Intro
+% exemple of MC failure,
+%- Summarize sin approach
+%- example success TGMM
+%- List needed elements
+ 
+ Inferring the population properties of a class of astrophysical objects from multiple individual measurements usually takes the form of a hierarchical bayesian analysis. In a standard hierarchical analysis we usually simultaneously infer the parameters of individual events and the parameters of the proposed population in one inference procedure. In all but the simplest cases, this can be computationally prohibitive, because of the excessive dimensionality of the problem, and the analysis is performed in two steps. 
+ 
+ Firstly, individual objects are observed and their data $d$ is recorded. Using a model for the data generating process, we can infer a posterior distribution over the parameters $\theta$ given the detected data $d$, written as $p(\theta | d)$. 
+ 
+ Once events are analyzed and their posteriors reported, these posteriors are then pooled together as part of a seperate analysis to infer the population properties of these objects, given a good model for the population generating process, and a way to estimate our selection biases.
+ 
+ Take, for example, the case of binary black hole (BBH) detections by the LIGO-Virgo-KAGRA network. Each object (BBH) can be individually modelled to be characterized by some parameter set $\theta = \{m_1, m_2, \chi_1, \chi_2, ...\}$ (e.g. the spins and masses of the BHs in the binary), and one can construct a forward model that can product a detected signal from a given parameter set. We can then use our understanding of the noise process to be able to write the likelihood $\mathcal{L}(d | \theta)$of a given detected datastream $d$ given a particular set of parameters $\theta$.
+ 
+  We then use this model to characterize our best estimates of the underlying object parameters $\theta$ after having seen each datastream $d_e$, through a posterior distribution $p(\theta | d_e)$. In practice, the dimensionality of $\theta$ is large enough that the only way to work with $p(\theta | d_e)$ is through samples from the distribution. Hence we usually have iid samples from $\theta^e \sim p(\theta | d_e)$ for each detected event, which we then use as inputs of our population analysis.
+ 
+
+Often we are interesting in inferring the population features of $N$ detected objects, each with data $\{d_e\ \forall\ e \in 1..N\}$, in the presence of selection effecs. They can be individually described by a parameter set $\{\theta\}$. To do so we parameterize a continuous, general class of distributions over $\theta$, with parameters $\Lambda$ (also called hyper-parameters) and aim to infer the parameters of this distribution. As an example, we have detected $N = 69$ binary black hole mergers using the LIGO-Virgo-Kagra network of detectors. These detections created invidual datastreams $d_i$ and we have analyzed them to infer the parameters of the binary black hole system $\theta = \{m_1, m_2, \chi_1, \chi_2, ...\}$. We have characterized our inference of these individual detections by modelling the signal in the datastream as function of the intrinsic binary parameters and computing a posterior distribution. This posterior distirbution is saved as a collection of samples $\theta^e_i$ where the $i$ index goes over the samples of event $e$.
+
+
+We further model a universe, where these black hole parameters $\theta$ come from some population model $p(\theta | \Lambda)$. In a universe where black holes were completely characterized by their spin magnitudes $\chi \in [0,1]$, we could assert a model where these spins come from some truncated normal distribution
+\begin{equation}
+	\chi_1 \sim N_{[0,1]}(\mu_1, \sigma_1)\ \ \
+	\chi_2 \sim N_{[0,1]}(\mu_2 ,\sigma_2)\, ,
+\end{equation}
+
+In the above example, $\theta \in \{\chi_1, \chi_2\}$ and $\Lambda \in \{\mu_1, \sigma_1, \mu_2, \sigma_2\}$.
+
+
+\section{Motivation}
+
+The likelihood for a given population model $p(\theta | \Lambda)$ , given a set of detections $\{d_e\}$ and population parameters $\Lambda$ takes on the form 
+
+\begin{equation}
+\mathcal{L}\left(\left\{d_e\right\} \mid \Lambda\right) \propto \prod_i^N \frac{\mathcal{L}\left(d_e \mid \Lambda\right)}{\xi(\Lambda)} \, .
+\end{equation}
+
+
+where  $\mathcal{L}(d_e | \Lambda)$ is the likelihood of the observed event $e$, given the population model parameters $\Lambda$, defined as
+
+\begin{equation}
+	 \mathcal{L}(d_e | \Lambda) = \int p(\theta | \Lambda) \frac{p(\theta | d_e)}{\pi_{\empty}(\theta)} d\theta\, .
+\end{equation}
+
+where we have access to samples $\theta_i \sim p(\theta | d_e)$ with weights $w_i = 1/\pi_{\empty}(\theta)$
+
+In addition, $\xi(\Lambda)$ is the fraction of events that would have been detected by our instrument with events generated from the population model with parameters $\Lambda$.  This is usually calculated using
+
+\begin{equation}
+		\xi(\Lambda) =  \int p(\theta \mid \Lambda)  \frac{p_{det}(\theta | \Lambda_0)}{p(\theta \mid \Lambda_0)} d \theta\, .
+\end{equation}
+
+where we have access to samples $\theta_i \sim p_{det}(\theta | \Lambda_0)$ with weights $w_i = 1/p(\theta | \Lambda_0)$. 
+
+In short we can see that to perform the population analysis, involves estimates of integrals of the kind
+
+\begin{equation}
+	I(\Lambda) = \int p(\theta | \Lambda) \frac{p(\theta)}{w(\theta)} d\theta
+\end{equation} 
+
+when we have samples from $p(\theta)$ and access to individual weights $w(\theta)$. 
+
+and more succinctly we can write $\chi$ as the vector $\chi = \{\chi_1, \chi_2\}$
+
+\begin{equation}
+	\label{spins_are_truncated_normal}
+	\vec{\chi} \sim N_{[0,1]}(\vec{\mu}, {\Sigma})\,.
+\end{equation}
+
+Additionaly, we will ignore selection effects in this section, further simplifying our likelihood. We will remove these restrictions in later sections. We can then write the posterior over our population parameters as:
+
+\begin{equation}
+	\label{hyper_posterior}
+	p(\Lambda | \{d_i\}) = \pi(\Lambda) \prod_{i}^{N_{\textrm{events}}} L(d_i | \Lambda)
+\end{equation}
+
+This will allow us to write our population level likelihood for each event as:
+
+\begin{equation}
+	\label{population_likelihood_given_events}
+	L(d_i | \Lambda) = \int p(\theta | \Lambda)L(d_i | \theta) d\theta
+\end{equation}
+
+where we can use \eqref{spins_are_truncated_normal}  to write out the above as
+
+\begin{equation}
+	L(d_i | \mu, \Sigma) = \int \phi_{[0,1]}(\chi | \mu, \Sigma) L(d_i | \chi) d^2\chi \, .
+\end{equation}
+
+We usually have access to posterior samples for each event $d_i$ and some analytical representation of the sampling prior $\pi(\chi)$ used in those parameter estimation runs. We will then use those to write out the population likelihood as
+
+\begin{equation}
+	L(d_i | \mu, \Sigma) = \int \phi_{[0,1]}(\chi | \mu, \Sigma) \frac{p(\chi | d_i)}{\pi(\chi)} d^2\chi \, .
+\end{equation}
+
+Techniques to accurately calculate the above integral will be the central topic of this paper, and we will compare the above to other methods involving KDEs and to our proposed method of using Truncated Gaussian Mixture models.
+
+\end{comment}
+
+
+\section{Illustrative Example}
+\label{sec:Illustrative Example}
+To illustrate the problem we intend to solve, we will construct a concrete simple example. Namely we imagine a situation where we only observe black hole spins $\chi \in [0,1]$. This means that our parameter space is 1-dimensional ($\theta \in \{\chi\}$) and bounded. 
+%This methodology does not use anything explicit about BH spins other than the fact that they are parameters that are truncated, so this methodology can be used very generally in such a context. 
+We then model the population of black hole spins as coming from a truncated normal distribution
+
+\begin{equation}
+	\label{spins_are_truncated_normal}
+	\chi \sim N_{[0,1]}(\mu, \sigma)\, .
+\end{equation}
+
+We assume that we have performed $N$ detections, and have each of the posteriors also take the form of a truncated normal distribution, whose variance comes from noise in the detection process,
+
+\begin{equation}
+	p(\chi | d_i) = \phi_{[0,1]}(d_i, \sigma_{detector})\, ,
+\end{equation}
+
+when assuming a flat uniform prior $\pi(\chi) = 1$. This means that the posterior samples $\chi_j \sim \mathcal{N}_{[0,1]}(d_i, \sigma_{detector})$.
+
+We would like to get a posterior distribution over the hyper parameters of this model $\Lambda = \{\mu, \sigma\}$, and that can be written as
+
+\begin{equation}
+	p(\mu, \sigma | \{d_i\}) = \pi(\Lambda) \prod_{i} L(d_i | \Lambda) \, ,
+\end{equation}
+
+where $ \pi(\Lambda)$ is our prior over the hyper parameters, and the population likelihood for a given event $L(d_i | \Lambda)$ is given by the integral
+
+\begin{equation}
+	L(d_i | \mu, \sigma) = \int \phi_{[0,1]}(\chi | \mu, \sigma) \frac{p(\chi | d_i)}{\pi(\chi)} d\chi \, .
+\end{equation}
+
+With the assumed form of the posterior and prior, the integral we must compute as
+
+\begin{equation}
+	L(d_i | \mu, \sigma) = \int \phi_{[0,1]}(\chi | \mu, \sigma) \phi_{[0,1]}(\chi | d_i, \sigma_{detector}) d\chi \, .
+\end{equation}
+
+Since we only have access to samples from $\phi_{[0,1]}(\chi | d_i, \sigma_{detector})$ and not the actual distribution, we must estimate $L(d_i | \mu, \sigma)$. In this section we will see how monte-carlo estimation and kernel-density estimation perform when estimating this likelihood for $\sigma \to 0$, and $\mu \to 0$ (near the boundary).
+
+
+\subsubsection{Monte Carlo Estimation}
+
+\begin{comment}
+\begin{figure*}[htbp!]
+	\begin{center}
+		{\includegraphics[width=0.8\paperwidth]{./figures/narrow_distribution_limits_truncated_variance_with_gmm.pdf}}
+	\end{center}
+	\vspace*{-5mm}
+	\caption{Estimating the shape of the posterior to be a truncated normal $N_{[0,1]}(0.4, 0.2)$ and a population model that gets more and more compact near the edge $N_{[0,1]}(0, \sigma_{pop}), \sigma_{pop} \to 0$, one can show that the variance of the likelihood estimate (95\% confidence interval shown here) can blow up for values of the population deviation parameter smaller than $\sigma_{pop} \approx 0.025$ for 1000 samples. The confidence intervals of the Truncated GMM technique (using bootstrapped estimates) are much tighter and around the correct value. \label{fig:myfig}} 
+\end{figure*}
+\end{comment}
+	
+One common way to compute the above involves using samples from $p(\chi | d_i)$, and weighting them
+
+\begin{equation}
+	\hat{L}(d_i | \mu, \sigma) = \frac{1}{N} \sum_j\phi_{[0,1]}(\chi_j | \mu, \sigma)\, ,
+\end{equation}
+
+where $j$ goes over the posterior samples for event $d_i$. Asymptotically, the above estimate is definitely \textbf{theoretically} unbiased, in the restricted sense that
+\begin{equation}
+	\mathbb{E}( \hat{L}(d_i | \mu, \Sigma) ) = L(d_i | \mu, \Sigma)\, ,
+\end{equation}
+where $L(d_i | \mu, \Sigma)$ is the actual value of the likeihood. 
+
+However, in practice, the variance can blow up for very narrow population features. As an extreme example,  one would get a $0$ likelihood value \textit{almost surely} for a dirac-delta function - making it practically biased for narrow features. 
+
+The monte-carlo variance of the above estimate (assuming the central limit theorum) is given by
+
+
+\begin{equation}
+	Var(\hat{L}) = \frac{1}{N} [\mathbb{E}(\hat{L}^2) -  (\mathbb{E} (\hat{L}))^2 ]\, ,
+\end{equation}
+
+which we can compute analytically. This variance tends to blow up for $\sigma_{pop} = \sigma_{\chi} \to 0$, which is a generic feature of the monte carlo estimate. In the 1-D case we can analytically calculate the variance estimate for different widths of the population model, which we show in the appendix. For around 1000 samples drawn from the posterior distribution (assumed to be a truncated normal), the variance of the likelihood estimate $Var(\hat{L})$ starts to blow up at values as large $\sigma_{pop} \approx 0.025$ ,  as shown in  \autoref{fig:myfig}. The takeaway is that more and more samples are needed to probe narrower population features. In fact, as the cumulative catalog of events increases in size there is an increase in the number of samples needed to resolve feature of the same width as discussed in detail by \cite{Talbot2023}. 
+
+%The memory requirements will scale more \asad{(would be nice to introduce the scale here, something like samples needed for fixed variance estimates scales as $N_{\textrm{samples}} \sim \mathcal{O}(\sigma_{pop}^{-2})$ )}
+
+\subsubsection{Kernel Density Estimates}
+\label{sec:IllustrativeExample-KDE}
+Generically the way to approach the issue with compact population features in the literature has been to use density estimation techniques (e.g KDEs, GMMs, Normalizing Flows etc.) to reconstruct the posterior density from its samples and come up with ways that they can be (semi-)analytically integrated with a more restricted population model, or alternatively evaluated on samples from a population model instead. 
+
+One of the solutions to the above is to use Kernel Density Estimates of $L(\chi \mid d_i)$ using some kernel $K$, giving us the estimate:
+
+\begin{equation}
+	\hat{L}(\chi \mid d_i) = \frac{1}{N}\sum_{j=1}^N K(\chi  | \chi_j h)\,,
+\end{equation} 
+over all samples from the likelihood estimate of $\{d_i\}$, for some bandwidth $h$ which can be computed for that kernel. This estimate takes the form
+
+\begin{equation}
+	\label{KDE-integral}
+	\begin{split}
+		\hat{I}^{({\tiny KDE})}_{N}(\Lambda) &= \frac{1}{N} \sum_j^N \int p(\chi| \Lambda)  K(\chi  | \chi_j h) d\chi \\
+		&= \frac{1}{N} \sum_j^N  F^{(KDE)}(\Lambda, \chi_j, h)\,,
+	\end{split}
+\end{equation}
+where $F^{(KDE)}(\Lambda, \chi_j, h)$ computes the analytical integral above.
+Note that, as with our method, the ability to compute the individual integrals in the sum of \eqref{KDE-integral}, depends on being able to perform the integral analytically in the sector of interest, which puts constraints on the form of the population model. These techniques generally have two requirements: 1) The integral of the population model with the kernel must be analytically tractable \& fast to compute and 2) The density estimate must not be a biased estimate in the regime of interest, atleast to some order. i.e. $\mathbb{E}[\hat{p}(\btheta)] =  p(\btheta) + \mathcal{O}(h)$ for all $\btheta$ at the boundary.
+
+\subsubsection{Truncated Gaussian Mixtures}
+The approach we suggest in this paper utilizes a similar trick to Section \ref{sec:IllustrativeExample-KDE} above, where we represent the likelihood $L(\chi \mid d_i)$ as a weighted sum of component distributions that can each be analytically integrated against the population model. The representation we propose is that of a truncated Gaussian mixture model (TGMM). These are similar to Gaussian Mixture models, but where the individual components are made out of truncated gaussians. 
+More explicitly, the distribution takes the form, 
+\begin{equation}
+	\hat{L}(\chi \mid d_i)  = \sum_k w_k \phi_{[0,1]}(\chi \mid \mu_k, \sigma_k) \,.
+\end{equation}
+for values of $\{w_k, \mu_k, \sigma_k\}_{k=1\dots K}$ which are fit to samples from the event likelihoods. The procedure to perform this fit is outlined in Section \ref{sec:TGMM}.
+With this representation of the likelihood, and leveraging the fact that the population model is truncated gaussian, one can get an estimate of the importance integral we need $I(\Lambda)$ \asad{(I know this is inconsistent notation will fix later.)}. 
+Simplifying further we get,
+\begin{equation}
+	\label{IllustrativeExampleTGMM-integral}
+	\begin{split}
+		\hat{I}^{({\tiny TGMM})}(\Lambda) &= \sum_k^K w_k \int p(\chi| \Lambda)  \phi_{[0,1]}(\chi \mid \mu_k, \sigma_k) d\chi \\
+		&= \sum_k^K w_k \int\phi_{[0,1]}(\chi \mid \mu, \sigma)  \phi_{[0,1]}(\chi \mid \mu_k, \sigma_k) d\chi \\
+		&= \sum_k^K  w_k F^{(TGMM)}(\mu, \sigma, \mu_k, \sigma_k)\,,
+	\end{split}
+\end{equation}
+where $F^{(TGMM)}$ is actually the integral of the product of two truncated normal distributions over their domains $\chi \in [0,1]$. The form of this integral can be written as \asad{(dont know best way to make equation below fit)}
+\begin{equation}
+	\begin{split}
+		F^{(TGMM)}(\mu_1, \sigma_1, \mu_2, \sigma_2) &= \int_0^1 \phi_{[0,1]}(\chi \mid \mu_1, \sigma_1) \phi_{[0,1]}(\chi \mid \mu_2, \sigma_2) d\chi  \\
+		&= \frac{C(\mu', \sigma') \phi(\mu_1 \mid \mu_2, \sqrt{\sigma_1^2 + \sigma_2^2})}{C(\mu_1,\sigma_1) C(\mu_2,\sigma_2)}\,
+	\end{split}
+\end{equation}
+where $\mu', \sigma'$ are defined as
+\begin{equation}
+	\begin{gathered}
+		\mu'=\frac{\sigma_1^{-2} \mu_1+\sigma_2^{-2} \mu_2}{\sigma_1^{-2}+\sigma_2^{-2}} \\
+		\sigma'^2=\frac{\sigma_1^2 \sigma_2^2}{\sigma_1^2+\sigma_2^2}
+	\end{gathered}
+\end{equation}
+and $C(\mu, \sigma) = \int_0^1 \phi(\chi \mid \mu, \sigma)d\chi$, which can be computed using  readily available fast and stable numerical routines. The advantage of this methodology is that we can get analytical evaluation of the integral depending on how good the truncated gaussian mixture model fit is. Additionally it is important to note that the number of TGMM components $K$ has to be much fewer than the number of samples it is fit to $K << N$. This allows computational speedup, since we are now performing these computations only over $K$ terms.
+\begin{figure*}
+	\begin{center}
+		{\includegraphics[width=0.8\paperwidth]{./figures/narrow_distribution_limits_truncated_variance_combined.pdf}}
+	\end{center}
+	\vspace*{-5mm}
+	\caption{Estimating the shape of the posterior to be a truncated normal $N_{[0,1]}(0.4, 0.2)$ and a population model that gets more and more compact near the edge $N_{[0,1]}(0, \sigma_{pop}), \sigma_{pop} \to 0$, one can show that the variance of the likelihood estimate (95\% confidence interval shown here) can blow up for values of the population deviation parameter smaller than $\sigma_{pop} \approx 0.025$ for 1000 samples. The confidence intervals of the Truncated GMM technique (using bootstrapped estimates) are much tighter and around the correct value. Additionally KDE techniques can fix this blow up in the variance estimate, but can give biased estimates as we approach the edge. This efficiency and bias only gets worse with an increase in the number of dimensions}
+	\label{fig:myfig2} 
+\end{figure*}
+
+\subsubsection{Comparison}
+In Figure \ref{fig:myfig2} we can show how the different estimation techniques for $\hat{L}(d_i \mid \mu, \sigma)$ compare in their variance and bias properties. We consider the specific case of a population model evaluated at the boundary at $\chi \to 0$ and look at the estimators as $\sigma = \sigma_{pop} \to 0$. We consider a particular event likelihood that follows the shape of a truncated normal with parameters $N_{[0,1]}(0.4, 0.2)$ and utilize 1000 samples from this likelihood. To get bootstrapped estimates of the bias and variance of these estimators we get a new set of 1000 samples from the event likelihood and redo the monte carlo estimate / KDE estimate / TGMM fit and then compute $\hat{L}(d_i \mid \mu, \sigma)$ again. This gives us bootstrapped samples from the estimator. We then compute the median and 95\% confidence interval estimates as we decrease $\sigma_{pop}$. We notice a few expected trends. 
+
+Firstly, the monte carlo estimate transitions to a regime of very large variance at $\sigma_{pop} \approx 0.025$, and is wholly inaccurate in this regime. This transition is expected to happen for even larger values of $\sigma_{pop}$ as the dimensionallity of the problem increases. Interestingly monte-carlo estimates are still unbiased, as can be seen by the dotted blue line in the second panel of Figure.~\ref{fig:myfig2}, but the large variance makes it infeasible for practical purposes. 
+Secondly, both types of KDEs actually do not converge to the correct value of the likelihood estimate, even though they are close. Noteably, KDE methods do not suffer from the transition to large variance that occured in the case of the monte-carlo estimate. 
+Lastly, we see that the TGMM method faithfully captures the true value of the likelihood $L(d_i \mid \mu, \sigma)$ with minimal bias, all while having a controlled variance near the edge and computational advantage.
+
+\section{General Procedure}
+\subsection{Problem Setup}
+We consider a general catalog of $N$ observations labelled by index $e$, and that we have obtained their posterior samples from individual analysis given by $p(\btheta \mid d_e)$, under a sampling prior of $\pi(\btheta \mid \emptyset)$.  
+In addition we assume the presence of selection effects such that the probability of detection at parameter $\btheta$ is  $P_{det}(\btheta) \in (0,1)$. 
+We then create a model for the relative population distribution of astrophysical objects $p(\btheta \mid \bLambda)$, parameterized by some hyper-parameters $\bLambda$. In essence we then hope to infer our posterior over the parameters of these distributions, given our detected catalog $\{d_e\}$. The posteriors can be written as,
+\begin{equation}
+	p(\bLambda \mid \{d_e\}) = \pi(\bLambda)\xi(\bLambda)^{-N}\prod_{e}^N \mathcal{L}(d_i \mid \bLambda)\,,
+	\label{eq:populationposterior}
+\end{equation}
+where $\xi(\bLambda)$ is called the population-averaged detection efficiency, and takes in to account selection effects. Additionally $ \mathcal{L}(d_i \mid \bLambda)$ is defined, and estimated as
+\begin{equation}
+\begin{aligned}
+		\mathcal{L}(d_i \mid \bLambda) &= \int p(\btheta \mid \bLambda) \mathcal{L}(d_e \mid \btheta) d\btheta \\
+	&= \int p(\btheta \mid \bLambda) \frac{p(\btheta\mid d_e)}{\pi(\btheta \mid \emptyset)} d\btheta \\
+	&\approx \left\langle \frac{p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda})}{\pi(\boldsymbol{\theta} \mid \emptyset)}  \right\rangle_{\boldsymbol{\theta} \sim p(\btheta \mid d_e)}
+ 	\label{eq:eventlevelposterior}
+\end{aligned}
+\end{equation}
+
+For full generality we assume that we do not have an analytic form for $P_{det}(\btheta)$, and we must estimate it by performing an injection campaign analagous to \cite{Loredo:2004nn, Mandel:2018mve, Vitale:2020aaz, Farr:2019rap}. 
+An injection campaign draws samples from a fiducial population with broad support $p(\btheta \mid \bLambda_0)$, and labels each of the samples as detected or not detected, using a preset event detection threshold $\rho_{*}$\footnote{We use this same threshold to construct our catalog of $N$ events.}. 
+%This yields us samples from $p(\btheta \mid det, \bLambda_0, \rho_*) = p_{det}(\btheta \mid \bLambda_0)$.
+The population-averaged detection efficiency is estimated using
+\begin{equation}
+\begin{aligned}
+	\xi(\boldsymbol{\Lambda}) &=  \int p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda})  P_{\rm det}(\boldsymbol{\theta})\, \mathrm{d}\boldsymbol{\theta} \\ &\approx  \int p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda_0})\,  P_{\rm det}(\boldsymbol{\theta}) \frac{p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda})}{p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda}_0)} \mathrm{d}\boldsymbol{\theta} \\
+	&\approx
+	\frac{N_{\rm det}}{N_{\rm draw}} \left\langle \frac{p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda})}{p(\boldsymbol{\theta} \mid \boldsymbol{\Lambda}_0)}  \right\rangle_{\boldsymbol{\theta} \sim p_{\rm det}(\boldsymbol{\theta} | \boldsymbol{\Lambda}_0)}\, ,
+	\label{eq:detectionefficiency}
+\end{aligned}
+\end{equation}
+where $P_{\rm det}(\boldsymbol{\theta})$ is the probability of detecting a signal with parameters $\btheta$, $\boldsymbol{\Lambda}_0$ represents some fiducial population from which $N_{\rm draw}$ signals are simulated to estimate detection efficiency and obtain $N_{\rm det}$ samples of detected signals from $p_{\rm det}(\boldsymbol{\theta} \mid \boldsymbol{\Lambda}_0)$. This is proportional, but not equal, to the fiducial population density times the detection probability, i.e., $p_{\rm det}(\boldsymbol{\theta\mid\boldsymbol{\Lambda}_0}) \propto p(\boldsymbol{\theta}\mid \boldsymbol{\Lambda_0})\, \mathbf{P}_{\rm det}(\boldsymbol{\theta})$ with proportionality constant $N_{\rm det} / N_{\rm draw}$.
+
+We note that \eqref{eq:eventlevelposterior} and \eqref{eq:detectionefficiency} take the form of an integral estimated using importance sampling. More specifically, 
+\begin{equation}
+	\label{eq:the-generic-integral}
+	I(\bLambda) = \int p(\btheta | \bLambda) \frac{p(\btheta)}{W(\btheta)} d^n\theta \approx \left\langle   \frac{p(\btheta|\Lambda)}{W(\btheta)}  \right\rangle_{\btheta \sim p(\btheta)}\, ,
+\end{equation} 
+for some set of samples $\btheta_i$ from $p(\btheta)$, with individual weights evaluated at their given by $W_i = W(\btheta_i)$. 
+\subsection{Evaluating integrals for population analysis}
+Standard techniques using monte carlo estimates of the integral, usually run into issues when the population features become sharp or near the boundary. Here we describe our technique to allow us to get better estimates of $I(\bLambda)$ as we approach these limits. 
+
+As we saw in Section~\ref{sec:Illustrative Example}, our methodology utilizes a restriction on the class of population models. To get around this, and allow flexibility in our models, we chose to seperate our parameters $\btheta$ into those where we impose this restriction and perform our integral analytically ($\btheta^a$, where $a$ stands for analytic), and those where we can use our standard monte-carlo techniques on samples ($\btheta^s$ where $s$ stands for samples) and are free to use any model.
+
+%Let us now assume that from the astrophysical parameters of interest $\btheta$, we aim to explore these limits in some subset of these parameters $\btheta^a$, and not in the rest $\btheta^s$ where $\btheta = \btheta^a\oplus\btheta^s$. This is desirable, since our methodology utilizes a restriction on the class of population models in the sector of interest $\btheta^a$, and hence it is useful to not apply such a restriction to all parameters. 
+
+As an illustrative example, consider the analysis for binary black hole mergers as detected by the LVK. The parameters often consist of the mass of the primary, ratio of the masses in the binary, the cosine of the individual spin-tilts, the individual spin magnitudues and the redshift: $\btheta = [m_1, q, \cos\theta_1, \cos\theta_2, \chi_1, \chi_2, z]$. In this case, $\cos\theta_i$ is bounded within $[-1,1]$ and $\chi_i$ is bounded within $[0,1]$, and the cases where $\chi_i \to 0$ or $\cos\theta_i \to 1$ are physically interesting and it is desirable to explore sub-population features which have compact support at the edges. Hence we would then seperate the parameters as $\btheta = [\cos\theta_1, \cos\theta_2, \chi_1, \chi_2]\oplus[m_1, q, z] = \btheta^a\oplus\btheta^s $.
+
+We then set the population model in the analytic sector to be some sort of \ac{TGMM}, and we allow any generic model in the remaining parameters. More specifically we impose
+\begin{equation}
+	\begin{aligned}
+		p(\btheta \mid \bLambda) &= \sum_l \eta_l \phi_{[\ba, \bb]}(\btheta^a | \bmu_l \bSigma_l)  p(\btheta^s \mid \bLambda^s_l)\,,
+	\end{aligned}
+	\label{eq:modelrestriction}
+\end{equation}
+where $p(\btheta^s \mid \bLambda^s_l)$ can be any model. 
+Note that a different model is used in the other sectors for each \ac{TGMM} component, and these models can be inferred separately. For simplicity, we consider the case where there are no interactions between the two sectors $\bLambda^s_k = \bLambda^s$, even though our method works for general models as in \eqref{eq:modelrestriction}.
+\begin{equation}
+	\begin{aligned}
+		p(\btheta \mid \bLambda) &= p(\btheta^s \mid \bLambda^s)\sum_l \eta_l \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l) \,,
+	\end{aligned}
+	\label{eq:modelrestrictionextra}
+\end{equation}
+
+With such a restriction on the population model, and a seperation of the parameter space $\btheta = \btheta^a \oplus \btheta^s$, we can revisit the integral \eqref{eq:the-generic-integral},
+\begin{equation}
+\begin{aligned}
+	I(\bLambda) &= \int p(\btheta | \bLambda) \frac{p(\btheta)}{W(\btheta)} d^n\theta \\
+	&=  \int \left[p(\btheta^s \mid \bLambda^s)\sum_l \eta_l \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l)\right] \frac{p(\btheta)}{W(\btheta)} d^n\theta \\
+	&=  \int \left[\frac{p(\btheta^s \mid \bLambda^s)}{W^s(\btheta^s)}\sum_l \eta_l \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l)\right] \frac{p(\btheta)}{W^a(\btheta^a)} d^n\theta \\
+\end{aligned}
+\end{equation} 
+where we have used the fact that the weight function $W(\btheta)$ can disassociate into $W^s(\btheta^s)W^a(\btheta^a)$.
+
+We then fit the weighted probability distribution to a \ac{TGMM} and impose the the individual gaussian correlation matrices seperate into an analytic sector and a sampled sector. i.e $\bSigma_k = \bSigma^a_k \oplus \bSigma^s_k$. 
+\begin{equation}
+\begin{aligned}
+	\frac{p(\btheta)}{W^a(\btheta^a)} &\approx \sum_k w_k \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta \mid \boldsymbol{\mu}_k ,\boldsymbol{\Sigma}_k) \\ &=  \sum_k w_k \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^a \mid \boldsymbol{\mu}^a_k ,\boldsymbol{\Sigma}^a_k) \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^s \mid \boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)
+\end{aligned}
+\end{equation}
+Essentially, we have taken the weighted dataset $\mathcal{D} = \{\btheta_i, W_i=W_i^a\}_{i=1\dots N}$ and fit them to a truncated gaussian mixture model as described in Section \ref{sec:TGMM}. 
+
+This allows us to break the integral as
+\begin{equation}
+	\begin{aligned}
+		I(\bLambda) &=  \int \left[\frac{p(\btheta^s \mid \bLambda^s)}{W^s(\btheta^s)}\sum_l \eta_l \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l)\right]\\ & \,\,\,\,\times\left[\sum_k w_k \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^a \mid \boldsymbol{\mu}^a_k ,\boldsymbol{\Sigma}^a_k) \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^s \mid \boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k) \right]d^n\theta  \\
+		&= \sum_{kl} \eta_l w_k \int \frac{p(\btheta^s \mid \bLambda^s)}{W^s(\btheta^s)}  \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^s \mid \boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k) d\theta^s \\ & \,\,\,\,\times \int \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l) \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^a \mid \boldsymbol{\mu}^a_k ,\boldsymbol{\Sigma}^a_k)d\theta^a \\
+		&= \sum_{kl} \eta_l w_k \left\langle   \frac{p(\btheta^s|\Lambda^s)}{W^s(\btheta^s)}  \right\rangle_{\btheta \sim \mathcal{N}_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)}\\ & \,\,\,\,\times \int \phi_{[\ba, \bb]}(\btheta^a | \bmu_l, \bSigma_l) \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\btheta^a \mid \boldsymbol{\mu}^a_k ,\boldsymbol{\Sigma}^a_k)d\theta^a \\
+		&= \sum_{kl} \eta_l w_k \left\langle   \frac{p(\btheta^s|\Lambda^s)}{W^s(\btheta^s)}  \right\rangle_{\btheta \sim \mathcal{N}_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)}\\ &\,\,\,\, \times F_{[\ba, \bb]}(\bmu^a_k, \bSigma^a_k,\bmu_l, \bSigma_l)\,
+	\end{aligned}
+\end{equation} 
+where $F_{[\ba, \bb]}(\bmu_1, \bSigma_1, \bmu_2, \bSigma_2)$ is the integral of the product of two truncated gaussians with parameters $(\bmu_1, \bSigma_1)$ and $(\bmu_2, \bSigma_2)$ over the hypercube with bounding corners $\ba$ and $\bb$. 
+The function $F$ can be computed very quickly analytically and we have written numerical routines to evaluate the expression in our package \href{https://www.github.com/gravpop}{\texttt{gravpop}} \citep{gravpop}.
+
+One could then evaluate the expectation over the sampled parameters using monte carlo sampling. i.e. 
+\begin{equation}
+	\left\langle   \frac{p(\btheta^s|\Lambda^s)}{W^s(\btheta^s)}  \right\rangle_{\btheta \sim \mathcal{N}_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)} \approx \frac{1}{N}\sum_{n=1}^{N} \frac{p(\btheta^s_n \mid \bLambda^s)}{W^s(\btheta_n)}\,,
+\end{equation}
+where we have averaged over $N$ samples from the $k$th gaussian component $\mathcal{N}_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)$.
+
+However, we have found better estimates of $I(\bLambda)$ if instead of generating new samples from $\mathcal{N}_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}^s_k ,\boldsymbol{\Sigma}^s_k)$, we generate samples from $\text{Categorical}({\bf z}_i)$ to assign each original sample $\btheta_i$ to a diferent component $k$. Then we can use this map to create $k$ groups of data points of size $N_k$, with each group assigned to a different component. Armed with this assignment, we can then do the monte-carlo sum over the original samples, 
+ \begin{comment}
+ \begin{aligned}
+ I(\bLambda) &\approx   \sum_{ikl} \eta_l \left[ \frac{1}{N}\sum_{i=1}^{N} z_{ik} \frac{p(\btheta^s_i|\Lambda^s)}{W^s(\btheta^s_i)} F_{[\ba, \bb]}(\bmu^a_k, \bSigma^a_k,\bmu_l, \bSigma_l)\right] \\
+ &\approx   \sum_{kl} \eta_l w_k \left[ \frac{1}{N_k}\sum_{i=1}^{N_k} \frac{p(\btheta^s_i|\Lambda^s)}{W^s(\btheta^s_i)}  \right] F_{[\ba, \bb]}(\bmu^a_k, \bSigma^a_k,\bmu_l, \bSigma_l)\,.
+\end{aligned}
+\end{comment}
+ \begin{equation}
+		I(\bLambda) \approx   \sum_{kl} \eta_l w_k \left[ \frac{1}{N_k}\sum_{i=1}^{N_k} \frac{p(\btheta^s_i|\Lambda^s)}{W^s(\btheta^s_i)}  \right] F_{[\ba, \bb]}(\bmu^a_k, \bSigma^a_k,\bmu_l, \bSigma_l)\,.
+		\label{eq:hybrid-scheme}
+\end{equation}
+
+
+\section{Truncated Gaussian Mixture Models}
+\label{sec:TGMM}
+We implement the algorithm by \cite{Lee2012} which implements the Expectation Maximization algorithm for a fitting a mixture model of Truncated multivariate gaussians to a dataset. Given a set of samples known to lie in a hypercube bounded by corners $\ba$ and $\bb$, we can estimate the original probability distribution using a mixture of multivariate truncated gaussians,
+\begin{equation}
+	p(\theta) = \sum_k w_k \phi_{[\boldsymbol{a},\boldsymbol{b}]}(\boldsymbol{\mu}_k ,\boldsymbol{\Sigma}_k)\,.
+\end{equation}
+
+There is no package that implements the algorithm to the best of the authors' knowledge and hence we have released a \texttt{julia} package \href{https://github.com/Potatoasad/TruncatedGaussianMixtures.jl}{\texttt{TruncatedGaussianMixtures.jl}} that can fit these mixtures to any user provided dataset. In addition we have released the package in \texttt{python} as \href{https://github.com/Potatoasad/truncatedgaussianmixtures}{\texttt{truncatedgaussianmixtures}}  for those who would prefer that language.
+
+We have added two features not implemented in \cite{Lee2012}, which we outline in this section. Firstly, we add the ability to fit these Truncated Gaussian Mixture Models (TGMMs) to \textit{weighted} samples. The algorithm to fit these is outlined for the case of standard GMMs is outlined in \cite{frisch2021gaussianmixtureestimationweighted}. 
+Secondly the GMMs can have slow convergence when fitting features near the boundary. To side step this, we perform some initial iterations where we fit the TGMMs directly to boundary unbiased KDE estimates of the data, as opposed to samples, this speeds up the iterations taken for the TGMM to converge to an edge feature. We outline this feature in this section as well.
+%Secondly, it is known that standard Gaussian Mixture Models (GMMs) can have slow convergence when there is a lot of overlap between the different GMM components. The solution to this in the case of standard GMM algorithms is to use deterministic anti-annealing as outlined by \cite{gmm-anti-anealing}. We implement this solution for the case of fitting Truncated GMMs which needs minimal changes to the algorithm. 
+
+\subsection{Full Algorithm}
+%We start with a set of weighted datapoints  $\mathcal{D} = \{\btheta_i = \btheta_i^a \oplus \btheta_i^s, W_i = W^a_i W^s_i\}_{i=1\dots N}$, where $\btheta_i^a$ is the projection to the analytic sector and $\btheta_i^s$ is the projection to the sampled sector and $i \in 1\dots N$. Additionally, the data itself can be weighted with some weight function that can be seperated as $W(\btheta) = W(\btheta^a)W(\btheta^s)$, we can then evaluate these on each sample as $W_i = W^a_i W^s_i$. 
+We start with a set of weighted datapoints  $\mathcal{D} = \{\btheta_i, W_i\}_{i=1\dots N}$, with $W_i$ being the weight of the $i$th sample. We aim to fit these samples to a mixture of $K$ truncated multivariate gaussians with parameters $\bmu_k, \bSigma_k$, with weights $w_k$ truncated over a hypercube with corners ${\bf a}$ and ${\bf b}$. For brevity we will represent the set of parameters describing this mixture as $\bTheta = \{\bmu_k, \bSigma_k, w_k\}_{k=1\dots K}$.
+The outcome of our fit would be to infer $\bTheta$, which would give us our best fit of the distribution that produced $\mathcal D$ as
+\begin{equation}
+	p(\btheta\mid \mathcal \bTheta) = \sum_k^K w_k \phi_{[\ba, \bb]}(\btheta \mid \bmu_k, \bSigma_k)\,.
+\end{equation}
+%\begin{equation}
+%	\mathcal{L}(\btheta\mid \mathcal \bTheta, \mathcal{D}) = \prod_i^N \mathcal{L}(\btheta\mid \mathcal  \bTheta, \mathcal{D}_i) = \prod_i^N \sum_k^K w_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\,.
+%\end{equation}
+
+The implementation of EM algorithm introduces a set of unknown, latent, indicator variables ${\bf z}_{i} \in \{0,1\}^K$ representing the assignment of datapoints $\btheta_i$ to particular TGMM components $k$. Particularly
+\begin{equation}
+	[{\bf z}_i]_k = z_{ik} =
+	\begin{cases}
+		1 & \parbox[t]{0.6\linewidth}{if the $i$th datapoint is assigned to component $k$}, \\
+		0 & \parbox[t]{0.6\linewidth}{if the $i$th datapoint is not assigned to component $k$}.
+	\end{cases}
+\end{equation}
+
+For brevity we will represent the set of all latent variables as $\bZ = \{z_{ik}\}_{i=1\dots N, k=1\dots K}$. Having knowlege of the latent variables allows us to make hard assignments to each component, and write out our likelihood as
+\begin{equation}
+	\label{eq:full-EM-likelihood}
+	p(\btheta_i \mid \mathcal  {\bf z}_i, \bTheta) = \sum_k^K z_{ik} \phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\,.
+\end{equation}
+The likelihood we seek to optimize is just the expected value of the log-likelihood over the weighted dataset. 
+\begin{equation}
+	\log\mathcal{L}(\bTheta, \bZ \mid \mathcal D) =  \sum_i^N W_i \log p(\btheta_i \mid \mathcal {\bf z}_i, \bTheta)
+\end{equation}
+However, in our case, we would like to marginalize  out the latent variables to get our estimate of the TGMM parameters, in which case we get a variant of the above, 
+\begin{equation}
+	\begin{aligned}
+			\log\mathcal{L}(\bTheta \mid \mathcal D) &=  \sum_i^N W_i \log\left[ \sum_k p(\btheta_i, z_{ik} = 1\mid \bTheta)\right]
+	\end{aligned}
+\end{equation}
+Of course, we do not yet, know the probability distribution $p(z_{ik} = 1)$, since we need these depend on the values of $\bTheta$ which we are trying to infer. 
+To get around this we start with some initial set of TGMM parameters $\bTheta^{(0)}$ and compute $p(z_{ik}= 1\mid \bTheta^{(0)})$, which can be done by judicious use of the bayes rule on \eqref{eq:full-EM-likelihood}. We insert these into our estimate as,
+\begin{equation}
+	\begin{aligned}
+		&\log\mathcal{L}(\bTheta \mid \mathcal D, \bTheta^{(0)}) = \\ &\sum_i^N W_i \log\left[ \sum_k \frac{p(\btheta_i ,z_{ik} = 1 \mid \bTheta)}{p(z_{ik} = 1 \mid \bTheta^{(0)})} p(z_{ik} = 1 \mid \bTheta^{(0)}) \right]\,.
+	\end{aligned}
+\end{equation}
+This term inside the logarithm is an expectation over $\bZ \mid \bTheta^{(0)}$. We then use Jensen's inequality to exchange the logarithm and the expectation to get a lower bound on the log-likelihood of our estimate which we will denote as $Q(\bTheta \mid \bTheta^{(0)}, \mathcal D) $.
+\begin{equation}
+	\begin{aligned}
+		&\log\mathcal{L}(\bTheta \mid \mathcal D, \bTheta^{(0)}) \geq Q(\bTheta \mid \bTheta^{(0)}, \mathcal D) \\ &=  \sum_i^N \sum_k^K W_i p(z_{ik} = 1 \mid \bTheta^{(0)}) \log \left[\frac{p(\btheta_i ,z_{ik} = 1 \mid \bTheta)}{p(z_{ik} = 1 \mid \bTheta^{(0)})} \right]\,.
+	\end{aligned}
+\end{equation}
+where we can write 
+\begin{equation}
+	\begin{aligned}
+	p(\btheta_i ,z_{ik} = 1 \mid \bTheta) &= p(\btheta_i \mid z_{ik} = 1, \bTheta)p(z_{ik} = 1 \mid \bTheta) \\ &= w_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\,,
+	\end{aligned}
+\end{equation}
+since it is just the probability density at the sample point $\btheta_i$ given we know that it belongs to component $k$. 
+Addionally, we ignore constant terms and represent $\zik := p(z_{ik} = 1 \mid \bTheta^{(0)})$ for clarity. Making these changes gives us
+\begin{equation}
+\begin{aligned}
+	Q(\bTheta \mid \bTheta^{(0)}, \mathcal D) &=  \sum_i^N \sum_k^K W_i \zik \log \left[w_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\right]\,.
+\end{aligned}
+\end{equation}
+
+\textbf{The E-Step: }Firstly, $\zik$ can be computed from the initial parameter guess $\bTheta^{(0)}$ as
+\begin{equation}
+	\langle z_{ik}\rangle = p(z_{ik} = 1 \mid \bTheta^{(0)}) = \frac{w^{(0)}_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu^{(0)}_k, \bSigma^{(0)}_k)}{\sum_k w^{(0)}_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu^{(0)}_k, \bSigma^{(0)}_k)}\,,
+\end{equation}
+
+\textbf{The M-Step: }We then try and maximize $Q(\bTheta \mid \bTheta^{(0)})$ to get a new estimate for the new maximum $\bTheta^{(1)}$.
+\begin{equation}
+	\begin{aligned}
+		\bTheta^{(1)} &= \arg \max_{\bTheta} Q(\bTheta \mid \bTheta^{(0)}, \mathcal D) \\ &= \arg \max_{\bTheta} \left[\sum_i^N \sum_k^K W_i \zik \log \left[w_k \phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\right]\right]\,.
+	\end{aligned}
+\end{equation}
+subject to the condition that $\sum_k w_k = 1$. We can first find the new estimate of $w_k$ as
+\begin{equation}
+	w^{(1)}_k = \frac{\sum_{i}W_i\zik}{\sum_k\sum_{i}W_i \zik}\,.
+\end{equation}
+
+With a fixed estimate for $w_k$ in the M-step, we can write the inference of the remaining parameters ($\bmu_k$ and $\bSigma_k$) as $K$ seperate maximization procedures, and find that:
+\begin{equation}
+	\begin{aligned}
+		\bTheta^{(1)}_k = \arg \max_{\bTheta_k}  \left[\sum_i^N \eta_{ik} \log \left[\phi_{[\ba, \bb]}(\btheta_i \mid \bmu_k, \bSigma_k)\right]\right]\,,
+	\end{aligned}
+\end{equation}
+where we have removed constant terms and defined $\eta_{ik} := \frac{\sum_k W_i \zik}{\sum_{ik} W_i \zik}$. 
+Let $\mathcal{D}_k$ be the dataset $\{\btheta_i\}_{i=1\dots N}$ with points weighted by $\eta_{ik}$. Then the sum can be written as the expectation
+\begin{equation}
+	\begin{aligned}
+		\bTheta^{(1)}_k &= \arg \max_{\bTheta_k}  \left[\mathbb{E}_{\btheta \sim \mathcal{D}_k} \left[\log\phi_{[\ba, \bb]}(\btheta \mid \bmu_k, \bSigma_k)\right]\right] \\ &\overset{\mathrm{c}}{=}  \arg \min_{\bTheta_k} D_{KL}(\mathcal{D}_k\ ||\  \mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k))\,,
+	\end{aligned}
+\end{equation}
+where $\overset{\mathrm{c}}{=}$ denotes equality up to an additive constant. This expectation is simply the KL-divergence between $\mathcal{D}_k$ and $\mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k)$, up to terms independent of $\mu_k$ and $\Sigma_k$.
+For forms of the target distribution that are in the exponentional family (of which truncated gaussians are a part), minimizing the KL divergence corresponds to matching the sufficient statistics of the two distributions \citep{amari2000methods}. 
+Hence we simply chose to find $\mu_k$ and $\Sigma_k$ that solve the simultaneous equations involving the sufficient statistics of the truncated gaussian family -- namely the first two moments:
+\begin{equation}
+	\begin{aligned}
+		\mathbb{E}_{\btheta \sim \mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k)}[\btheta] &=\sum_i \eta_{ik} \btheta_i \\
+		\mathbb{E}_{\btheta \sim \mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k)}[\btheta\btheta^T] &= \sum_i \eta_{ik} \btheta_i\btheta_i^T\,.
+	\end{aligned}
+	\label{eq:moment-matching}
+\end{equation}
+The algorithm to compute the left hand side of \eqref{eq:moment-matching} is outlined in \cite{Lee2012} and implemented in our package \cite{truncatedgaussianmixtures}. This matching can then be done by using a fixed point iteration scheme using auto-differentiation techniques to get the required gradients (though some custom gradient rules are required). This iteration scheme is also implemented in the aforementioned package.
+
+\begin{comment}
+Note that the projection of any vector/matrix to the analytic and sampled sectors is denoted with a superscript $a$ for analytic, and a superscript $s$ for sampled. For example, the tgmm parameters can be broken up as $\bmu_i = \bmu_i^a \oplus \bmu_i^s$ and $\bSigma_i = \bSigma_i^a \oplus \bSigma_i^s$. 
+%Our current implementation binds us to compute the posterior integral for TGMMs that are block correlated in blocks of size 2, this is only since we lack a JAX implementation for the probability mass inside a truncated region of a generally correlated truncated multivariate normal of dimension greater than 2. 
+We additionally choose to define a block structure to only allow correlations between certain parameters. This block structure is defined by an array of labels $[a,a,b,b,b,\dots]$, where indices with the same labels belong to the same block in the covariance matrix.
+
+\begin{figure}
+	\begin{algorithm}[H]
+		\caption{Expected Maximization Routine for TGMMs with customizations\\ 
+			We take in our dataset of samples $\mathcal{D} = \{\btheta_i\}_{i=1\dots N}$, with weights $\{W_i\}$ broken up by each sector, and aim to fit to this data $K$ gaussians with a truncated to lie in a hypercube with corners $[\ba, \bb]$. Additionally we get an array of labels ${\bf B} = [a,a,b,b,\dots,c]$ that define the block structure. Additionally we define a tolerance \texttt{tol} to provide a stopping criteria for the expectation maximization.}
+	\begin{algorithmic}[1]
+			\State \textbf{Input: } 
+			\begin{itemize}
+				\item Samples $\btheta_i$
+				\item Weights $W_i$
+				\item Block structure for the covariance matrix $[a,a,b,b,\dots]$
+				\end{itemize}
+			\State{Use \textbf{K-means} initialization over the samples $\btheta_i$ with weights $w^a_i$, to get initial guesses for assignment of points $i$ to components $k$: $z^i_k \in \{0,1\}$.  Given these, we initialize the parameters of the TGMM as:
+				\begin{equation}
+					\begin{aligned}
+						w_k & =\frac{1}{N} \sum_iW_i\left\langle z_{ik}\right\rangle \\
+						\boldsymbol{\mu}_k & =\frac{\sum_iW_i \left\langle z_k^n\right\rangle \mathbf{y}^n}{\sum_iW_i \left\langle z_k^n\right\rangle}-\mathbf{m}_k, \\
+						\bSigma_k & =\frac{\sum_iW_i\left\langle z_k^n\right\rangle\left(\mathbf{y}^n-\widehat{\boldsymbol{\mu}}_k\right)\left(\mathbf{y}^n-\widehat{\boldsymbol{\mu}}_k\right)^T}{\sum_iW_i\left\langle z_k^n\right\rangle}+H_k
+					\end{aligned}
+				\end{equation}
+			}
+		\end{algorithmic}
+	\end{algorithm}
+\end{figure}
+
+\subsection{Weighted Samples}
+As part of our population analysis, we seperate the individual weights of each sample in the analytic and sampled sectors, and as such, we fit a TGMM to $p(\btheta)/w_{a}(\btheta^a)$ as opposed to $p(\btheta)$. One way to perform this fit, is to reweight each set of posterior samples by $1/w_a(\btheta^a)$. This can cause an excessive loss of samples, which could alternatively used for fitting. We then follow \cite{frisch2021gaussianmixtureestimationweighted} to allow our TGMM fitting procedure to use weighted samples.
+
+Essentially, in every E step, we use replace all expectations with weighted expectations over the samples with weights $1/w_a(\btheta^a)$. More concretely, the M-step becomes:
+
+\begin{equation}
+	\left\langle z_k^n\right\rangle:=p\left(z_k^n=1 \mid \btheta\right)=\frac{\pi_k f_k\left(\btheta\right)/w_a(\btheta)}{\sum_l \pi_l f_l\left(\btheta\right)/w_a(\btheta)} .
+\end{equation}
+
+\subsection{Categorical Assignment}
+Often the way to compute hybrid integrals, as shown before has been to do the following. 
+
+\begin{equation}
+	\label{hybrid-split-categorical-assignment}
+	\begin{split}
+		I(\Lambda) = \sum_{k} w_k \big\langle  p(\theta_a | \Lambda_a) \big\rangle_{\theta \sim \mathcal{N}(\mu^a_k, \Sigma^a_k)} \times \\ 
+		\left\langle  \frac{p(\theta_s | \Lambda_s)}{w(\theta_s)} \right\rangle_{\theta \sim \mathcal{N}(\mu^s_k, \Sigma^s_k)} 
+	\end{split}
+\end{equation}
+
+Assuming the TGMM fit has converged, one can make a good approximation in the sampled dimensions that actually decreases the bias of our fitting method. For component $k$, instead of generating samples from a normal distribution $\mathcal{N}_{[a,b]}(\mu_k, \Sigma_k)$, we simply assign the original samples $\theta_i$ to components using the categorical map:
+
+\begin{equation}
+	\begin{split}
+		z_i \sim \textrm{Categorical}(\vec{\eta}_i) \\
+		z_i \in \{1,2,..k\}
+	\end{split}
+\end{equation}
+
+where 
+{\tiny }
+\begin{equation}
+	\label{eta-assignment}
+	\eta_i^k = \frac{\phi_{[a,b]}(\theta_i | \mu_k \Sigma_k)}{\sum_k \phi_{[a,b]}(\theta_i | \mu_k \Sigma_k)}
+\end{equation}
+
+Then we can get samples from $\theta_i$ where $z_i = k$, and use those in lieu of sampling from $\mathcal{N}(\mu_k^s, \Sigma_k^s)$. This works because the expectation-maximization algorithm decreases the KL-divergence of the samples with the model, by first optimizing the means, covariances and weights of the individual components given the current expected assignment of the points to different components, and then optimizing the assignment probabilities $\eta^k_i$ of the each of the data points to the $k$-th component. \eqref{eta-assignment} is simply the next step in that optimization process, and since the algorithm has already converged, performing this assignment should not affect the fit. The advantage of doing this is that if there were any sharp boundaries or cuts defined in the original samples that the TGMM was not able to fully capture, projecting back to the original samples in this way will ensure that those cuts are obeyed when evaluating \eqref{hybrid-split-categorical-assignment}.
+\end{comment}
+\subsection{Boundary Unbiasing}
+We find that when fitting TGMMs to samples, getting better convergence at the edge is slow. This is because, since we use K-means initialization, most initialized components will lie mostly within the truncation region, and hence the initialization itself is biased to begin with. 
+
+To counter act this, we look more closely at \eqref{eq:moment-matching} as part of the M-step in the algorithm.
+The right hand side of these equations are the weighted moments of the samples, which can be viewed as weighted moments of a PDF given by $\hat{p}_i(\btheta) = \sum_i \eta_{ik}\delta(\btheta - \btheta_i)$. 
+To push the algorithm to prioritize fitting edge effects for a certain number of iterations, we propose a variant of the M-step where we replace the right hand side with a KDE that is unbiased at the boundary up to $\mathcal{O}(h)$ constructed with non-symmetric truncated gaussian kernels $\phi_{[\ba,\bb]}(\btheta \mid \bmu(\btheta'), {\bf h})$. This KDE is described in Section~\ref{sec:BoundaryKDE} and will set our estimate for $\hat{p}_i$ as:
+\begin{equation}
+	\hat{p}_i(\btheta) = \sum_{ik} \eta_{ik} \phi_{[\ba, \bb]}(\btheta \mid \bmu(\btheta_i), {\bf h})
+\end{equation}
+\textbf{M-step (KDE variant): }For a certain number of iterations we perform a variant of the M-step update using 
+\begin{equation}
+	\begin{aligned}
+		\mathbb{E}_{\btheta \sim \mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k)}[\btheta] &=  \mathbb{E}_{\btheta \sim \hat{p}_i(\btheta)}[\btheta] = \sum_i \eta_{ik} \mathcal{M}_{1 i} \\
+		\mathbb{E}_{\btheta \sim \mathcal{N}_{[\ba,\bb]}(\mu_k, \Sigma_k)}[\btheta\btheta^T] &=  \mathbb{E}_{\btheta \sim \hat{p}_i(\btheta)}[\btheta\btheta^T] = \sum_i \eta_{ik} \mathcal{M}_{2 i}\,,
+	\end{aligned}
+	\label{eq:moment-matching-updated-kde}
+\end{equation}	
+where $\mathcal{M}_1$ and $\mathcal{M}_2$ are the first and second moments of $ \mathcal{N}_{[\ba, \bb]}(\bmu(\btheta_i),\ {\bf h})$ where the function $\bmu(\cdot)$ is defined in \ref{sec:BoundaryKDE}.
+
+We perform a certain number of EM iterations using this variant of the M-step and subsequently fall back to standard iterations as before.  
+
+\begin{figure}
+	\begin{algorithm}[H]
+		\caption{Expected Maximization Routine for TGMMs with customizations\\ 
+			We take in our weighted dataset of samples $\mathcal{D} = \{\btheta_i\}_{i=1\dots N}$, with weights $\{W_i\}$, and aim to fit to this data $K$ gaussians with a truncated to lie in a hypercube with corners $[\ba, \bb]$. Additionally we initialize a projection operator $\mathcal{P}$, that projects a covariance matrix to some user-specified block structure. Additionally we define a tolerance \texttt{tol} to provide a stopping criteria for the expectation maximization.}
+		\begin{algorithmic}[1]
+			%\State{Use \textbf{K-means} initialization over the samples $\btheta_i$ with weights $W_i$, to get initial guesses for assignment of points $i$ to components $k$: $z_{ik} \in \{0,1\}$.}
+			\State{Initialize: \texttt{K-means}($\btheta_i$, $W_i$) $\to z^{(0)}_{ik} \in \{0,1\}$.}
+			\State{Use to define initial parameters as 
+			\begin{equation}
+				\begin{aligned}
+					&\eta^{(0)}_{ik} = \frac{\sum_k W_i z^{(0)}_{ik}}{\sum_{ik} W_i z^{(0)}_{ik}},\ \ \ w^{(0)}_k = \frac{\sum_i W_i z^{(0)}_{ik}}{\sum_{ik} W_i z^{(0)}_{ik}},\ \ \ \\ &\bmu^{(0)}_k = \sum_{i} \eta^{(0)}_{ik} \btheta_i,\ \ \ \bSigma^{(0)}_k = \sum_{i} \eta^{(0)}_{ik} \left(\btheta_i - \bmu^{(0)}_k\right)\left(\btheta_i - \bmu^{(0)}_k\right)^T
+				\end{aligned}
+			\end{equation}}
+		    \State{\textbf{Boundary Unbiasing post-initializaiton steps: }}
+			\State{Precompute first and second moments for the KDE kernels, $\mathcal{M}_{1 i}$ and $\mathcal{M}_{2 i}$ for each point $\btheta_i$}
+			\For{$n \in 1\dots N_{KDE}$}
+			\For{$k \in 1\dots K$}
+			\State{$\texttt{E-Step}(w^{(n-1)}_k, \bmu^{(n-1)}_k, \bSigma^{(n-1)}_k) \to w^{(n)}_k$}
+			\State{$\texttt{M-Step-KDE-variant}(w^{(n)}_k, \bmu^{(n-1)}_k, \bSigma^{(n-1)}_k) \to \bmu^{(n)}_k, \bSigma^{(n)}_k$} 
+			\State{Project onto block structure $\bSigma^{(n)}_k \to \mathcal{P}\bSigma^{(n)}_k$} 
+			\EndFor
+			\EndFor
+			\State{\textbf{Fitting: }}
+			\State{Now that we have fit to the KDE and allowed the PDF to fit edge features, we will allow it to converge with the standard M-steps}
+			\For{$n \in N_{KDE}\dots N$}
+			\For{$k \in 1\dots K$}
+			\State{$\texttt{E-Step}(w^{(n-1)}_k, \bmu^{(n-1)}_k, \bSigma^{(n-1)}_k) \to w^{(n)}_k$}
+			\State{$\texttt{M-Step}(w^{(n)}_k, \bmu^{(n-1)}_k, \bSigma^{(n-1)}_k) \to \bmu^{(n)}_k, \bSigma^{(n)}_k$}
+			\State{Project onto block structure $\bSigma^{(n)}_k \to \mathcal{P}\bSigma^{(n)}_k$}  
+			\If{$\Delta\ln\mathcal{L}(\bTheta^{(n)} \mid \mathcal D) \leq \texttt{tol}$}
+			\State{\Return{$w^{(n)}_k, \bmu^{(n)}_k, \bSigma^{(n)}_k$}}
+			\EndIf
+			\EndFor
+			\EndFor
+			\State{\Return{$w^{(N)}_k, \bmu^{(N)}_k, \bSigma^{(N)}_k$}}
+		\end{algorithmic}
+	\end{algorithm}
+\end{figure}
+
+\section{Implementation for gravitational waves}
+In this section we will apply our new methods to hierarchically analyze gravitational wave detections to look for features in the population distributions of black hole spins, which consist of bounded parameters. To show the effectiveness of our methods in general regimes, we try to reproduce previous analyses (as closely as possible) by the LVK collaboration that use monte-carlo methods to analyze the BBH population. Additionally we reproduce the results of \cite{Tong2022} that probe the possibility of a sub-population of BBHs with exactly zero spin magnitudes -- a population model with compact support at the boundary. They accomplish this by reperforming parameter estimation over all the individual detections to extract the exact evidence for the zero-spin hypothesis. This gives us a gold standard to compare our methods so we can reproduce their hierarchical inferences with our methods.
+
+\subsection{Fitting TGMMs to gravitational wave data}
+%\asad{
+%In this section I will discuss
+%\begin{itemize}
+%	\item Defining the data (GWTC-3 catalog, IMRPhenomXPHM or GWTC-1,2,3 combination that LVK uses, selection functions)
+%	\item Data pre-processing (Adding in prior weights for events, already defined for selection function times some jacobian)
+%	\item TGMM parameter fit options
+%	\item TGMM fit post processing
+%\end{itemize}
+%}
+
+Before we perform a suite of analyses, we define the data we use, the preprocessing applied, and any TGMM fit hyperparameters that were set to get a good fit to the posterior samples. We follow the event-selection protocol utilized by \cite{LVKPop}, and select 69 BBH events that pass a FAR threshold of $< 1 \text{yr}^{-1}$. For these events we use the posterior samples from parameter estimation performed using the \texttt{IMRPhenomXPHM} waveform \asad{(need to add citation)}. To quantify the selection effects, we use the sensitivity estimates described in \cite{LVKPop} and provided by LIGO Scientific, Virgo and KAGRA Collaborations \asad{cite the zenodo link}. 
+
+Both the posterior samples and sensitivity injections constitute weighted datasets, over which we take an expectation of the population model. The posterior samples in such an analysis are reported with the prior used fror sampling $W(\btheta)= 1/\pi(\btheta)$, and the sensitivity estimates are reported with the draw probability used to generate the injections $W(\btheta)= 1/p_{\text{draw}}(\btheta)$ which plays an analagous role to the prior mentioned previously and as seen in \eqref{eq:detectionefficiency}.
+
+We aim to analyze the spin magnitudes $\chi_1, \chi_2$ and the spin orientations $\cos\theta_1, \cos\theta_2$ analytically, while falling back to sampling for the primary mass, mass ratio and redshift parameters ($m_1, q, z$). For the posterior samples and the selection injections, we utilize the fact that the priors and draw probabilities are flat in the space of spin magnitude and spin orientation and so we set the analytic portions of these weights to one ($W^a(\btheta^{a}) = 1$).
+%Incidentally, this makes it more straightforward since we then have to fit \acp{TGMM} as if these were unweighted samples. 
+Additionally, we use the reported weights in the remaining dimensions augmented with appropriate jacobian factors as described in \cite{LVKPop}. Performing these steps gives us the weighted datasets of the event posteriors, and the selection injection sets.
+
+Subsequently, we fit \acp{TGMM} to these datasets. For the event level posteriors we fit $K = 15$ components with the covariance matrix consisting of three blocks: mass and redshift sectors, spin magnitude and spin orientations sectors. Each block can harbour correlations within the block but there can be no correlations between parameters of different blocks. We use the boundary unbiasing technique mentioned in \eqref{eq:moment-matching-updated-kde} for $N_{KDE} = 100$ iterations and then subsequently let the algorithm run for $N = 200$ iterations. For a better fit, we transform the primary source mass variable to the detector chirp mass, and fit the posterior samples in this new latent space. Once we have the resulting assignments of original samples to components, along with the \ac{TGMM} parameters, we can then transform back to the primary source mass variable, and gather samples for every component. We can then use \eqref{eq:hybrid-scheme} to compute the population likelihood for a given event. 
+
+For the selection injections we use $K = 40$ components, but turn off any correlations between parameters (i.e. diagonal covariances). We then utilize the boundary unbiasing technique mentioned in \eqref{eq:moment-matching-updated-kde} for $N_{KDE} = 100$ iterations and then subsequently let the algorithm run for $N = 200$ iterations. Additionally we transform the samples in the sampled parameters using the transformation $(m_1, q, z) \to (\log(m_1 - 2), \frac{q m_1 - 2}{m_1 - 2}, z)$, which allows for a better resolution of the $m_1, m_2 > 2$ cut inherent in the injection set. 
+
+
+
+\subsection{Showing equivalence to gravitational wave analysis using monte carlo estimation}
+\label{sec:WidePriorEquivalence}
+
+In this section we aim to show that the TGMM method will yield similar posteriors to those computed using monte carlo estimation in the regime where we trust the monte carlo estimate. To do this we perform a full population analysis (modelling the mass, spin and redshift parameters simultaneously) using the TGMM method and compare to the same analysis using the standard monte carlo scheme with $10^5$ samples per event.
+
+\begin{table*}
+	\centering
+	\caption{Summary of models and prior ranges for Section.~\ref{sec:WidePriorEquivalence}}
+	\label{tab:WidePriorModels}
+	%\renewcommand{\arraystretch}{1.3}
+	\begin{tabular}{llcc}
+		\toprule
+		\textbf{Sector} & \textbf{Model} & \textbf{Reference} & \textbf{Priors}\\ 
+		\toprule
+		\midrule
+		Mass & \texttt{Power Law + Peak} & \cite{LVKPop}  (B4)& Same as \cite{LVKPop}\\ 
+		Spin Orientation & \texttt{DEFAULT} & \cite{LVKPop} (B20) & Same as \cite{LVKPop}\\ 
+		Spin Magnitude & Truncated Gaussian & $\sim \mathcal{N}_{[0,1]}(\mu_\chi, \sigma_\chi) $& $\mu_\chi \sim U(0,1), \sigma_\chi \sim U(0.15, 1)$\\ 
+		Redshift & \texttt{PowerLaw} & $ \propto \frac{dV_c}{dz} (1+z)^{\kappa -1 }$ & Same as \cite{LVKPop}\\ 
+		\bottomrule
+	\end{tabular}
+\end{table*}
+
+
+
+We outline our models for the mass, redshift and spin-orientation sectors in Table.~\ref{tab:WidePriorModels}, using the same models and priors as used by the LVK's fiducial analysis \cite{LVKPop}, however we model the spin-magnitudes differently. We will model the spin magnitudes $\chi_1, \chi_2$ as identically and independently distributed (IID) truncated normal distributions. More specifically $\chi_1, \chi_2 \sim N_{[0,1]}(\mu_\chi, \sigma_\chi)$. 
+
+We find that if we track the number of effective samples $(N_{\text{eff}})$ of the importance sampling estimate and only look at those regions in parameter space where they are sufficient ($N_{\text{eff}} > N_{\text{events}}$), the TGMM and monte-carlo estimates agree. To keep the posterior broad enough for fair comparison this seems to be $\sigma_\chi > 0.15$ (Fig.~\ref{fig:N_eff_tracker}). 
+
+\begin{figure}[t]
+	\label{fig:N_eff_tracker}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/Sampled-N_eff-tracker.pdf}
+	\end{center}
+	\caption{For each hyper-posterior sample we compute the number of effective samples in the monte-carlo estimate for each event. Since our likelihood estimate is only valid if we have good convergence for all events - we plot the smallest $N_{\text{eff}}$ for each sample on the y-axis (this is usually GW190517). We can see that for $\sigma_\chi < 0.15$ we are in a regime where the monte-carlo estimate has too few points. As such we only use posterior samples with $\sigma_\chi > 0.15$ to compare the TGMM and monte-carlo methods.}
+\end{figure}
+
+Fig.~\ref{fig:SampledComparison} shows our comparison of the spin posterior predictives. They show that the two methods agree quite well and illustrates that the TGMM method works well in the regimes where the usual importance sampling technique is trustworthy. \asad{In addition we compare the full hyper-posterior in the appendix - will add}
+
+\begin{figure}[h]
+	\label{fig:SampledComparison}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/Sampled-TGMM-Comparison-Spins.pdf}
+	\end{center}
+	\caption{Comparison between the posterior estimates using the importance sampling techniques and the TGMM method with a prior cut at $\sigma_\chi > 0.15$}
+\end{figure}
+
+%\begin{comment}
+\subsection{Comparison to the fiducial LVK analysis}
+\asad{I feel a comparison to the LVK as section here doesn't add much, let me know if you agree, i can delete this section.}
+To connect our methods with previously established analyses, we compare and contrast the analysis of our method to the results from the fiducial analysis in \cite{LVKPop}, performed by the LVK collaboration. Due to our methods we differ from the LVK collaboration in a number of ways, preventing a direct one-to-one comparison. 
+
+Firstly, we can only use truncated gaussians, uniform distributions and mixtures thereof as models in the spin-magnitude sector. As such, we use truncated gaussian distributions, whereas the \texttt{Default} model we are comparing to uses beta distributions. Specifically these beta distributions can give singular behaviour for certain hyper-parameters, which leads \cite{LVKPop} to utilize a prior cut where $\alpha_\chi > 1, \beta_\chi > 1$. Additionally, \cite{LVKPop} use a prior that is flat in $(\mathbb{E}(\chi), \text{Var}(\chi))$ along with the $\alpha_\chi > 1, \beta_\chi > 1$ prior cut. 
+
+Hence, for comparison, we have used what looks like a complicated prior on the parameters $\mu_\chi, \sigma_\chi$ of our truncated gaussian to replicate the prior choices used by \cite{LVKPop}. The prior can be found in the appendix \asad{Will add appendix portion for weird prior}. 
+
+Secondly due to the variance properties of the importance sampling estimate, \cite{LVKPop} imposes a data-dependent prior that tracks the effective number of samples and culls regions of parameter space where $N_{\text{eff}} < N_{\text{events}}$ for event posteriors or $N_{\text{eff}} < 4N_{\text{events}}$ for selection function estimates. We do not perform this cut, since the direct analog of  $N_{\text{eff}}$ in our method is not straighforward. 
+
+In summary, LVK uses a different choice of model and prior for the spin-magnitudes, as well as additional data-dependent prior choices which we do not utilize. This leads to a slight difference in results which can be seen Fig.~\ref{fig:myfig2}. Meanwhile the results are quite similar, indicating that in the prior region utilized in the LVK fiducial analysis, the overall features of the spin-distribution are captured effectively. 
+
+\begin{figure}
+	\label{fig:LVKComparison}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/LVK_comparison_ppd_1d.pdf}
+	\end{center}
+	\caption{Comparison between the posterior estimatesof the LVK \texttt{Default} analysis and the TGMM method. The slightly greater differences in the spin distribution can be attributed to LVK using a beta distribution for the spin, whereas we use a truncated normal}
+\end{figure}
+
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/LVK_comparison_corner.pdf}
+	\end{center}
+	\caption{Corner plot over the spin variables (which is the analytic sector in the TGMM method), showing the comparison to the LVK reported results. We do not implement $N_eff$ cuts and we model the spins with a beta distribution.}
+\end{figure}
+
+%\end{comment}
+
+\subsection{Revisiting zero-spin sub-populations}
+
+\asad{
+	In this section I will define the model, and point out that I use truncated normal and they use beta, while they also use $N_eff$. I then show the results side by side, and say that it did a great job.
+}
+
+Given the ability to probe narrow features in the population of binary black hole mergers, we use this technology to revisit previous analyses that have explored the possibillity of a sub-population of binary black holes with negligible spin. 
+
+In this section we will reproduce one particular analysis by \cite{Tong2022} (following up on \cite{Galaudage2021}).  Their work explores augmenting the full sample set with samples from new parameter estimation runs over all events with $\chi_1 = \chi_2 = 0$ -- allowing them to explicitly compute the zero-spin bayes factors. This method has the advantage that it gives very accurate estimates at the hyper-parameter of interest ($\mu_\chi = \sigma_\chi = 0$) -- which we can use to benchmark our TGMM method. However, re-performing parameter estimation can be difficult to scale as the number of events grows in size (\asad{cite growing events?}) due to computational requirements. Additionally one is required to \textit{apriori} decide which point in the space of hyper-parameters is relavent and needs extra samples. For example, an analyst must make an \textit{apriori} decision to look for a sub-population of zero spin BBHs, and cannot let the analysis of the data point to the existence of such a sub-population agnostically. (\asad{I want to say this but also not be negative about the very great and imp work that \cite{Tong2022} and \cite{Galaudage2021} have done here.})
+
+We will replicate the \texttt{Extended} model implemented by \cite{Tong2022}, where the mass and redshift sectors are modelled similar to the \cite{LVKPop}. The spin magnitude is modeled as a mixture of a spike at $\chi_1 = 0, \chi_2 = 0$ and a component where both $\chi_1$ and $\chi_2$ are IID Beta distributed. More specifically, 
+
+\begin{equation}
+\begin{aligned}
+	p\left(\chi_{1,2} \mid \alpha_\chi, \beta_\chi, \lambda_0\right)= &\left(1-\lambda_0\right) \operatorname{Beta}\left(\chi_1 \mid \alpha_\chi, \beta_\chi\right) \operatorname{Beta}\left(\chi_2 \mid \alpha_\chi, \beta_\chi\right)\\&+\lambda_0 \delta\left(\chi_1\right) \delta\left(\chi_2\right)\,.
+\end{aligned}
+\end{equation}
+
+The spin orientation is modelled similar to the \texttt{Default} model one in \cite{LVKPop}, but with the added difference that \cite{Tong2022} introduce a minimum cosine tilt angle $z_{\min}$. In particular, 
+
+\begin{equation}
+	\begin{aligned}
+		p\left(z_{1,2} \mid \zeta, \sigma^t, z_{\min }\right)= &\zeta G_t\left(z_1 \mid \sigma^t, z_{\min }\right) G_t\left(z_2 \mid \sigma^t, z_{\min }\right)\\&+(1-\zeta)\left(\frac{\Theta\left(z_1-z_{\min }\right)}{1-z_{\min }}\right)\left(\frac{\Theta\left(z_2-z_{\min }\right.}{1-z_{\min }}\right)\,.
+	\end{aligned}
+\end{equation}
+
+
+
+\begin{figure}
+	\label{fig:TongComparisonFraction}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/Comparison-to-Tong-fraction.pdf}
+	\end{center}
+	\caption{Comparison between the posterior estimates using the importance sampling techniques and the TGMM method with a prior cut at $\sigma_\chi > 0.15$}
+\end{figure}
+
+\begin{figure}
+	\label{fig:TongComparisonSpinMagnitude}
+	\begin{center}
+		\includegraphics[width=0.3\paperwidth]{../figures/Comparison-to-Tong-SpinMagnitude-corner.pdf}
+	\end{center}
+	\caption{Comparison between the posterior estimates using the importance sampling techniques and the TGMM method with a prior cut at $\sigma_\chi > 0.15$}
+\end{figure}
+
+\begin{figure}
+	\label{fig:TongComparisonSpinOrientation}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/Comparison-to-Tong-SpinOrientation-corner.pdf}
+	\end{center}
+	\caption{Comparison between the posterior estimates using the importance sampling techniques and the TGMM method with a prior cut at $\sigma_\chi > 0.15$}
+\end{figure}
+
+\begin{comment}
+\section{Gravitational Wave Population Analysis}
+As part of a hierarchical bayesian inference procedure on gravitational wave data \citep{Thrane:2018qnx}, we need to efficiently estimate certain marginalized likelihoods using importance sampling. 
+These employ samples from the posterior (with prior weights) and samples from an injection campaign to estimate detection senstitivity in different parts of parameter space.
+These two together can allow us to infer the distribution of the population parameters in the presence of selection effects.
+
+In general the importance sampling needs to estimate integrals of the form
+
+\begin{equation}
+	\label{eq:generic-integral}
+	I(\Lambda) = \int p(\theta | \Lambda) \frac{p(\theta)}{w(\theta)} d^n\theta \approx \left\langle   \frac{p(\theta|\Lambda)}{w(\theta)}  \right\rangle_{\theta \sim p(\theta)}\, ,
+\end{equation} 
+
+when we have samples from $p(\theta)$ and access to individual weights $w(\theta)$. 
+The posterior over the population parameters is given by,
+\begin{equation}
+	p(\Lambda \mid \{d_i\}) = \pi(\Lambda)\xi(\Lambda)^{-N}\prod_{i}^N \mathcal{L}(d_i \mid \Lambda)
+	\label{eq:populationposterior}
+\end{equation}
+
+More specifically the individual event-level marginalized likelihoods are given by,
+\begin{equation}
+	\mathcal{L}(d_i \mid \Lambda)=\int  p(\theta \mid \Lambda) \frac{p(\theta \mid d_i)}{\pi(\theta \mid \emptyset)} d \theta\approx \left\langle   \frac{p(\theta \mid \Lambda)}{\pi(\theta \mid \emptyset)}  \right\rangle_{\theta \sim p(\theta \mid d_i)}\,,
+	\label{eq:eventpoplikelihood}
+\end{equation}
+where $p(\theta \mid d_i)$ is the posterior for event $i$, and $\pi(\theta \mid \emptyset)$ is the sampling prior used for that analysis. In addition $p(\theta \mid \Lambda)$ is the populaiton model whose parameters we are trying to infer. Additionally we need the detection efficiency which is calculated using,
+\begin{equation}
+	\xi(\Lambda) =  \int p(\theta \mid \Lambda)  \frac{p_{det}(\theta | \Lambda_0)}{p(\theta \mid \Lambda_0)} d \theta \approx \left\langle   \frac{p(\theta \mid \Lambda)}{p(\theta \mid \Lambda_0)}  \right\rangle_{\theta \sim p_{det}(\theta | \Lambda_0)}\,,
+	\label{eq:detectionefficiency}
+\end{equation}
+when we have samples from $p_{det}(\theta | \Lambda_0)$ and draw probabilities as weights $p(\theta | \Lambda_0)$ from some fiducial population described by $\Lambda_0$.
+We can see that \eqref{eq:detectionefficiency} and \eqref{eq:eventpoplikelihood} are special cases of \eqref{eq:generic-integral}.
+
+For an integral of the form \eqref{eq:generic-integral}, we can take the samples from $p(\theta)$ (could represent the posteriors or the detected injection set) and fit to them a weighted sum of \textit{truncated} multivariate gaussians. 
+
+\begin{equation}
+	p(\theta) = \sum_k w_k N_{[{\bf a},{\bf b}]}(\theta \mid \boldsymbol{\mu}_k, {\bf \Sigma}_k)
+\end{equation}
+
+where $\boldsymbol{a}$ and $\boldsymbol{b}$ are the two bounding corners of the hypercube defining the limits of the parameters $\theta$. 
+
+Now we assume that the population model is seperable, such that the mass and redshift sector seperate from the spin sector\footnote{In general, we can allow for a weighted sum of such seperable sub-models}, i.e.
+\begin{equation}
+	p(\theta \mid \Lambda) = p(\theta_\chi \mid \Lambda_\chi) p(\theta_{mz} \mid \Lambda_{mz})
+	\label{eq:seperatedmodel}
+\end{equation}
+and that in its most general form, the population model in the spin sector is some mixture of truncated multivariate gaussians (or uniform distributions). For example, one can see that our population model for the spin magnitude and spin orientation do follow this constraint as can be seen in \eqref{eq:twocomponentmodel} and \eqref{eq:orientationmodel}.
+
+While fitting for the truncated gaussians we impose that the covariance matrix for each component does not impose correlations between the spin sector and the other sectors. 
+
+\begin{equation}
+	p(\theta) = \sum_k w_k N_{[{\bf a},{\bf b}]}(\theta ^\chi\mid \boldsymbol{\mu}^{\chi}_k, {\bf \Sigma}^{\chi}_k)N_{[{\bf a},{\bf b}]}(\theta^{mz} \mid \boldsymbol{\mu}^{mz}_k, {\bf \Sigma}^{mz}_k)
+	\label{eq:seperatedtgmmfit}
+\end{equation}
+
+This does not mean that we cannot represent any distribution which correlates the two, it just means that \textit{each component} cannot be correlated. The action of several uncorrelated components together can construct correlations (e.g. as an extreme case, KDEs with uncorrelated bandwidth matrices can easily represent distributions with large scale covariances).
+
+By substituting \eqref{eq:seperatedmodel} and \eqref{eq:seperatedtgmmfit} into \eqref{eq:generic-integral}, we get,
+
+\begin{equation}
+	\begin{aligned}
+		I(\Lambda) = \sum_k w_k  &
+		\int N_{[{\bf a},{\bf b}]}(\theta ^\chi\mid \boldsymbol{\mu}^{\chi}_k, {\bf \Sigma}^{\chi}_k) p(\theta^\chi \mid \Lambda^\chi)d\theta^\chi \times \\&
+		\int N_{[{\bf a},{\bf b}]}(\theta^{mz} \mid \boldsymbol{\mu}^{mz}_k, {\bf \Sigma}^{mz}_k)\frac{p(\theta^{mz} \mid \Lambda^{mz})}{\pi(\theta^{mz} \mid \emptyset)} d\theta^{mz}
+		\label{eq:seperatedintegral-0}
+	\end{aligned}
+\end{equation}
+
+where we have assumed for now, that the sampling prior in spin space is flat. This constraint is removed in the full paper on the methodology \cite{TGMM_Methods}. We then rewrite the above to:
+
+\begin{equation}
+	\begin{aligned}
+		I(\Lambda) = \sum_k w_k  &
+		I(\boldsymbol{\mu}^{\chi}_k, {\bf \Sigma}^{\chi}_k, \Lambda_\chi)
+		\left\langle \frac{p(\theta^{mz} \mid \Lambda^{mz})}{\pi(\theta^{mz} \mid \emptyset)}\right\rangle_{\theta_{mz} \sim N_{[{\bf a},{\bf b}]}(\theta^{mz} \mid \boldsymbol{\mu}^{mz}_k, {\bf \Sigma}^{mz}_k)} 
+		\label{eq:seperatedintegral-1}
+	\end{aligned}
+\end{equation}
+
+Here the integral $	I(\boldsymbol{\mu}^{\chi}_k, {\bf \Sigma}^{\chi}_k, \Lambda_\chi)$ can be handled analytically (using some numerical routines we implement), and the expectation over the mass and redshift can be done using monte carlo estimation as is standard. 
+To handle cuts and reduce some bias of the \ac{TGMM} fit in the mass and redshift domains, we note that each \ac{TGMM} fit allows us to extract an assignment of each datapoint $i$ to a component $k$. 
+Armed with this assignment, we can then rewrite the expectation over the mass and redshift as an expectation over the \textit{original} posterior samples that were assigned to the component $k$.
+This leaves us with the expression
+
+\begin{equation}
+	\begin{aligned}
+		I(\Lambda) = \sum_k w_k  &
+		I(\boldsymbol{\mu}^{\chi}_k, {\bf \Sigma}^{\chi}_k, \Lambda_\chi)
+		\left[\frac{1}{N_k}\sum_i^{N_k} \frac{p(\theta_{i,k}^{mz} \mid \Lambda^{mz})}{\pi(\theta_{i,k}^{mz} \mid \emptyset)}\right]
+		\label{eq:seperatedintegral-final}
+	\end{aligned}
+\end{equation}
+
+where $\theta_{i,k}$ is the $i$th sample assigned to the $k$th component.
+
+\end{comment}
+\appendix
+\section{Additional Plots}
+\begin{figure}
+	\begin{center}
+		\includegraphics[width=0.4\paperwidth]{../figures/log_like_comparison2.pdf}
+	\end{center}
+	\caption{Comparison between the estimates of the log population likelihood using monte-carlo estimation and our TGMM estimation. We sample many points from a hyper prior and compare the estimates for each of them. The points are sampled from a fiducial distribution. These show good agreement over much of the parameter space.}
+\end{figure}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[width=0.8\paperwidth]{../figures/LVK_comparison_corner_full.pdf}
+	\end{center}
+	\caption{Full corner plot over all non-spin variables showing the comparison to the LVK reported results. We do not implement $N_eff$ cuts and we model the spins with a beta distribution. Since we do not implement $N_{eff}$ cuts, we can see that we do not have full agreement on the shape of $\sigma_m$ which is limited by monte-carlo sampling efficiency.}
+\end{figure}
+\section{Selection Effects}
+\label{sec:selectioneffects}
+$\xi(\Lambda)$ is the fraction of events that would have been detected by our instrument with events generated from the population model with parameters $\Lambda$.  This is usually defined by
+
+\begin{equation}
+	\label{selection_integral}
+	\xi(\Lambda) = \int \int \mathcal{L}(d \mid \theta) p(\theta \mid \Lambda) \Theta\left(\rho(d)-\rho_*\right)d \theta d d\, .
+\end{equation}
+
+where $\rho(d)$ is some detection statistic on the datastream $d$, and $\rho_*$ is the detection statistic cut-off used as part of the pipeline classifying the individual measurements as detections or not. In practice, this is computed by performing an injection campaign, that simulates events from some fiducial popualtion $\theta \sim p(\theta | \Lambda_0)$, creating a large mock data stream $d\sim \mathcal{L}(d | \{\theta\})$, and classifying events as detected or not based on the detection statistic $\rho$ and its cutoff $\rho_*$. This procedure gives us samples from
+
+\begin{equation}
+	\theta \sim p_{det}(\theta | \Lambda_0) \propto \int p(\theta | \Lambda_0)\mathcal{L}(d | \{\theta\})\Theta\left(\rho(d)-\rho_*\right) dd
+\end{equation}
+
+Which means we can rewrite the selection function as
+
+\begin{equation}
+	\xi(\Lambda) =  \int p(\theta \mid \Lambda)  \frac{p_{det}(\theta | \Lambda_0)}{p(\theta \mid \Lambda_0)} d \theta\, .
+\end{equation}
+
+Samples from this detected subset $\theta_i$ and their fiducial probabilities $p(\theta | \Lambda_0)$ can be used to estimate \eqref{selection_integral} using monte-carlo estimates:
+
+\begin{equation}
+	\xi(\Lambda) \approx \frac{1}{N_{inj}} \sum_{i=1}^{N_{det}} \frac{p(\theta_i | \Lambda)}{p(\theta_i | \Lambda_0)}
+\end{equation}
+
+\section{Boundary Unbiased KDE}
+\label{sec:BoundaryKDE}
+The Kernel Density Estimate (KDE) of a particular probability distribution is given by:
+
+\begin{equation}
+\begin{aligned}
+	\hat{p}(x) = \frac{1}{N}\sum_n K(x | x_n , h)
+\end{aligned}
+\end{equation}
+
+where $K(x | x_n, h)$ is the (non-symmetric) kernel with a bandwidth $h$. An example would be a gaussian KDE, in which case $K(x | x_n, h) = \phi(\frac{x-x_n}{h})$. In the large $N$ limit this estimate looks like:
+
+\begin{equation}
+\begin{aligned}
+	\hat{p}(x) = \mathbb{E}_{y \sim p(x)}[K(x|y)]
+\end{aligned}
+\end{equation}
+
+We would like, that in this limit, the estimate becomes the true distribution, ignoring terms of order $\mathcal{O}(h)$.
+
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}(\hat{p}(x)) = \int K(x | x')p(x')dx'
+\end{aligned}
+\end{equation}
+	
+Lets say we can analytically get $p(x')$ by taylor expanding around $x$. it should definitely be possible since $x,x' \in [a,b]$ and it is a fair assumption that the PDF we want to fit to is analytic inside the truncated domain. 
+
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}(\hat{p}(x)) = \int K(x | x')\left( p(x) + h(\frac{x-x'}{h})\cdot\grad p(x) + \mathcal{O}(h^2)   \right)dx'
+\end{aligned}
+\end{equation}
+
+
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}(\hat{p}(x)) = p(x)\int K(x | x')dx' + \grad p(x)\cdot \vec{x}\int K(x | x')dx' - \grad p(x)\cdot\int \vec{x}'K(x | x')dx' + \mathcal{O}(h^2)
+\end{aligned}
+\end{equation}
+An unbiased estimate at $x$ , of order $\mathcal{O}(h)$ requires:
+\begin{equation}
+\begin{aligned}
+	\int K(x | x')dx' = 1 \ \ \& \ \ \ \int \vec{x}'K(x | x')dx' = \vec{x} + \mathcal{O}(h)
+\end{aligned}
+\end{equation}
+We would like our kernels to be of the form of a truncated normal. More specifically, 
+\begin{equation}
+	\begin{aligned}
+		K(x | x' h) = \phi_{[a,b]}(x\mid x' h) = \frac{\phi(x | x' h)}{C(x', h)}
+	\end{aligned}
+\end{equation}
+
+However that kernel is definitely not unbiased as we get close to the edge:
+
+\begin{equation}
+\begin{aligned}
+	\int K(x | x')dx' = \int \frac{\phi(x | x' h)}{C(x', h)}dx' \neq 1
+\end{aligned}
+\end{equation}
+	
+If we take the mean parameter of the kernel, and instead of placing it AT the point, we allow the mean parameter $\mu$ to be some function of the point $x'$, we may have enough degrees of freedom to make it an unbiased KDE. This makes our ansatz for the kernel $K(x | x') = \phi_{[a,b]}(x | \mu(x') h)$. Now we find the function $\mu(x')$ to give us an unbiased estimate.
+
+\begin{equation}
+\begin{aligned}
+	\int_a^b \frac{\phi(x | \mu(x') h)}{C(\mu(x'), h)}dx' = \int_{-\infty}^{\infty} \frac{\phi(x | \mu, h)}{C(\mu, h)} \frac{dx'}{d\mu} d\mu
+\end{aligned}
+\end{equation}
+
+Now, let us assume we find a function $x'(\mu)$ such that $\frac{dx'}{d\mu} = C(\mu, h)$, we will then have:
+
+\begin{equation}
+\begin{aligned}
+	\int K(x | x')dx' = \int_{-\infty}^{\infty} \frac{\phi(x | \mu, h)}{C(\mu, h)} \frac{dx'}{d\mu} d\mu = \int_{-\infty}^{\infty} \phi(x | \mu, h) d\mu = 1
+\end{aligned}
+\end{equation}
+
+Now this means that in the 1D case:
+
+\begin{equation}
+\begin{aligned}
+	x'(\mu) = \int C(\mu, h) d\mu = \int \Phi(\frac{b-\mu}{h}) - \Phi(\frac{a-\mu}{h}) d\mu
+\end{aligned}
+\end{equation}
+
+This integral of a normal CDF is well known and can be computed to give:
+
+\begin{equation}
+\begin{aligned}
+	x'(\mu) = b - h \left( \beta \Phi(\beta) + \phi(\beta) \right) + h \left( \alpha \Phi(\alpha) + \phi(\alpha) \right)
+\end{aligned}
+\end{equation}
+
+where $\alpha = \frac{a-\mu}{h}$ and $\beta = \frac{b-\mu}{h}$.
+
+One can invert this equation for any given $x'$ to find the $\mu$ parameter where the point should lie. Inversion using root finding is very cheap in this situation and for even $100,000$ points is not at all the speed bottleneck in the TGMM procedure. Interpolation is also a good way to cache results and scale this procedure but we did not find that this step needed any further optimization for our use case. 
+
+As for the second condition, we have:
+
+\begin{equation}
+\begin{aligned}
+	\int \vec{x}'K(x | x')dx' = \int_a^b x'\frac{\phi(x | \mu(x') h)}{C(\mu(x'), h)}dx' = \int_{-\infty}^{\infty} x'(\mu)\frac{\phi(x | \mu, h)}{C(\mu, h)} \frac{dx'}{d\mu} d\mu = \frac{1}{\sqrt{2\pi}h}\int_{-\infty}^{\infty} x'(\mu)\exp(-\frac{(x-\mu)^2}{2h^2})d\mu
+\end{aligned}
+\end{equation}
+
+
+
+\begin{equation}
+\begin{aligned}
+	\int \vec{x}'K(x | x')dx' = \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[x'(\mu) \right] = \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[\mu + (x'(\mu) - \mu) \right] =  \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[\mu \right] + \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[ (x'(\mu) - \mu) \right]
+\end{aligned}
+\end{equation}
+
+
+
+\begin{equation}
+\begin{aligned}
+	\int \vec{x}'K(x | x')dx' = \vec{x} + \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[ (x'(\mu) - \mu) \right] = \vec{x} + \mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[ \begin{cases}
+		a-\mu + \mathcal{O}(h^2) & \mu < a  \\
+		\mathcal{O}(h) & a < \mu < b \\
+		b-\mu  + \mathcal{O}(h^2) & \mu > b
+	\end{cases} \right]
+\end{aligned}
+\end{equation}
+
+
+
+Note that $x \in [a,b]$, and hence any probability mass belonging to $\mathcal{N}(x,h)$ that goes out of the domain will decay rapidly with $h$.
+
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}_{\mu \sim \mathcal{N}(x,h)}\left[ \begin{cases}
+		a-\mu + \mathcal{O}(h^2) & \mu < a  \\
+		\mathcal{O}(h) & a < \mu < b \\
+		b-\mu  + \mathcal{O}(h^2) & \mu > b
+	\end{cases} \right] = \int_{-\infty}^a(a-\mu)\phi(\mu | x, h)d\mu + \int_{b}^{\infty}(b-\mu)\phi(\mu | x, h)d\mu + \mathcal{O}(h^2) \\
+	= h \phi\left(\frac{a-x}{h}\right)-h \phi\left(\frac{b-x}{h}\right)+\left(a-x\right) \Phi\left(\frac{a-x}{h}\right)+\left(b-x\right)\left(1-\Phi\left(\frac{b-x}{h}\right)\right) + \mathcal{O}(h^2) \\
+	= \left[h \phi\left(\frac{a-x}{h}\right) +  \left(a-x\right) \Phi\left(\frac{a-x}{h}\right) \right] + \left[h \phi\left(\frac{b-x}{h}\right) +  \left(b-x\right) \left(1-\Phi\left(\frac{b-x}{h}\right)\right) \right] + \mathcal{O}(h^2) \\
+	= [ \mathcal{O}(h^2) ] + [\mathcal{O}(h^2)] + \mathcal{O}(h^2) \\
+	= \mathcal{O}(h^2)
+\end{aligned}
+\end{equation}
+
+
+
+\begin{equation}
+	\begin{aligned}
+	\int \vec{x}'K(x | x')dx' = \vec{x} + \mathcal{O}(h^2)
+\end{aligned}
+\end{equation}
+
+
+That proves that our KDE is unbiased at order $h^2$: 
+
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}(\hat{p}(x)) = p(x) + \mathcal{O}(h^2)
+\end{aligned}
+\end{equation}
+
+
+\section{Boundary Unbiased KDE Bandwidth Selection:}
+
+We need to analyze the MISE (Mean Integrated Squared Error) to find the best bandwidth.
+\begin{equation}
+\begin{aligned}
+	MISE(h) = \int (\hat{p}_h(x) - p(x))^2dx = \int \hat{p}_h(x)^2 dx - 2\mathbb{E}_{x\sim p(x)}[\hat{p}_h(x)] + \int p(x)^2 dx
+\end{aligned}
+\end{equation}
+an unbiased estimate of $\mathbb{E}_{x\sim p(x)}[\hat{p}_h(x)]$ is given by:
+\begin{equation}
+\begin{aligned}
+	\mathbb{E}_{x\sim p(x)}[\hat{p}_h(x)] = \frac{1}{N(N-1)}\sum_n \left( - K(x_n | \mu_n, h) + \sum_m K(x_n | \mu_m, h)\right)
+\end{aligned}
+\end{equation}
+Since $\hat{p}_h(x) = \frac{1}{N}\sum_n N(x | \mu_n h)$,
+we can find that $\int \hat{p}_h(x)^2 dx $ can be given by:
+\begin{equation}
+\begin{aligned}
+	\frac{1}{N^2} \sum_{n,m, n\neq m} F(\mu_n, h, \mu_m, h)
+\end{aligned}
+\end{equation}
+where $F(\mu_1, \sigma_1, \mu_2, \sigma_2) = \int N(x | \mu_1 \sigma_1)N(x | \mu_2 \sigma_2)dx$. The dropping of the diagonals makes sure that there is no self interaction between points and makes the estimate unbiased.
+
+To make it work well with array operations we will compute this using:
+\begin{equation}
+\begin{aligned}
+	-\frac{1}{N^2}\sum_{n} F(\mu_n, h, \mu_n, h) + \frac{1}{N^2} \sum_{n,m} F(\mu_n, h, \mu_m, h)
+\end{aligned}
+\end{equation}
+
+
+\begin{comment}
+	
+	\section{Notes}
+	
+	\subsection{Names for things}
+	
+	Population likelihood given data from event $i$: 
+	
+	\begin{equation}
+		L(d_i | \theta) = \int p(\theta | \Lambda)L(d_i | \theta) d\theta
+	\end{equation}
+	
+	\section{Numerical Considerations}
+	We use some numerical algorithms to be able to compute the integral
+	
+	\begin{equation}
+		I(\mu, \Sigma, \mu', \Sigma') = \int_{\vec{a}}^{\vec{b}} \phi_{[a,b]}(x | \mu, \Sigma) \phi_{[a,b]}(x | \mu', \Sigma') d^n x \, ,
+	\end{equation}
+	
+	to sufficient accuracy for values of the parameters $\mu, \Sigma, \mu', \Sigma'$ where the distributions are far apart, or outside the truncation domain. In general the above integral is difficult to compute numerically, which can be seen by computing it further:
+	
+	\begin{equation}
+		I(\mu, \Sigma, \mu', \Sigma') = \int_{\vec{a}}^{\vec{b}} \phi_{[a,b]}(x | \mu, \Sigma) \phi_{[a,b]}(x | \mu', \Sigma') d^n x \, ,
+	\end{equation}
+	
+	
+	For our use case we always have covariance structures for the above $\Sigma, \Sigma'$ matrices such that they can be broken into the 2D integral:
+	
+\end{comment}
+
+%\begin{figure}
+%\includegraphics[width=0.9\columnwidth]{NSModels} 
+%\caption{Schematic of the two stellar models. The external tidal field produces a deformation $\chi$. In star A, we consider further perturbations $\xi$. In star B, we first map the star back into a spherically symmetric configuration, and then apply perturbations; the field $J_\zeta \xi$ corresponds to perturbations $\xi$ in model A, and $J_\zeta$ is the Jacobian transform.}
+%\label{fig:Models}
+%\end{figure}
+
+%\begin{table}
+%\renewcommand{\arraystretch}{2}
+%\caption{
+%\label{tab:VarList}
+%List of relevant definitions
+%}
+%\begin{ruledtabular}
+%\begin{tabular}{@{} l c l @{}}
+%$r_\pm$ & $\displaystyle M \pm \sqrt{M^2 - a^2 -Q^2}$ & Horizon positions \\
+%$\sigma$ & $\displaystyle \frac{r_+ - r_-}{r_+}$ & Near-extremal parameter \\
+%$k$ & $\omega - m \Omega_H$ &  Co-rotating frequency \\
+%$\hat{\omega}$ & $\omega r_+$ & Dimensionless frequency \\
+%$ \Omega_H$ & $\displaystyle \frac{a}{r_+^2 +a^2}$ & Horizon frequency \\
+%$\kappa$ & $\displaystyle  \frac{\sigma r_+}{2(r_+^2 +a^2)}$ & Surface gravity \\
+%$\mathcal J^2$ & $(m \Omega_H)^2(6M^2 +a^2) - A$ & WKB Indicator of DMs \\
+%$\delta^2$ & $\displaystyle 4 \hat{\omega}^2- (s+1/2)^2 - \lambda$ & DF matching parameter \\
+%$\varpi$ & $\displaystyle \frac{k}{\kappa}  - i s $ & DF matching parameter \\ 
+%$\zeta$ & $2m r_+ \Omega_H - i s$ & DF matching parameter \\ 
+%$x$ & $\displaystyle \frac{r-r_+}{r_+} $ & Radial parameter \\
+%$\displaystyle{\genfrac{}{}{0pt}{}{\omega_R,} {\omega_I}}$ & $\omega = \omega_R + i \omega_I$ & Frequency components
+%\end{tabular}
+%\end{ruledtabular}
+%\end{table}
+%
+
+%\begin{figure}
+%\includegraphics[width=1.0\columnwidth]{GravitationalAmp} 
+%\caption{}
+%\label{fig:GravAmp}
+%\end{figure}
+
+\begin{acknowledgements}
+%\acknowledgements
+We thank....
+%NSF Grant PHY-1912578.
+NSF Grant PHY-2207594.
+NSF Grant PHY-2308833.
+\end{acknowledgements}
+ 
+%OSG 
+%This research was done using resources provided by the Open Science Grid \cite{Pordes:2007zzb,Sfiligoi:2010zz}, which is supported by the National Science Foundation award #2030508.
+
+\bibliographystyle{aasjournal}
+\bibliography{./refs.bib}
+
+\end{document}
